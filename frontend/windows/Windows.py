@@ -1,9 +1,6 @@
 import os
-import pandas
 from pathlib import Path
-from PySide6.QtWidgets import *
-from QEasyWidgets import QFunctions as QFunc
-from PySide6.QtGui import QAction, QStandardItem
+from PySide6.QtWidgets import QMainWindow
 
 from windows.ui.UI_Window import *
 

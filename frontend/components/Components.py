@@ -1,4 +1,5 @@
-from typing import Optional
+from pandas import DataFrame
+from typing import Union, Optional
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import *
 
@@ -11,79 +12,42 @@ class Table_ViewTasks(QTableWidget):
         super().__init__(parent)
 
         self.setRowCount(0)
-        self.setColumnCount(6)
+        self.setColumnCount(0)
 
-    def setStyleSheet(self, StyleSheet: str):
-        super().setStyleSheet(StyleSheet +  '''
-            QHeaderView::section, QTableView, QTableView::item {
-                gridline-color:rgba(201, 210, 222, 123);
-                border-radius:0px;
-                border-color:rgba(201, 210, 222, 123);
-            }
-        '''
-        )
-
-    def AddRow(self, Param: tuple):
-        CaseName, DazzlingCheck, MonochromeCheck, UndertoneCheck, TaskStatus = Param
-
+    def AddRow(self, ValueRow: list[str]):
         RowHeight = 36
-        LabelStyle = '''
-        QLabel {
-            background-color: transparent;
-            padding: 6px;
-            border-width: 1px;
-            border-style: solid;
-            border-color: rgba(201, 210, 222, 123);
-        }
-        '''
         def SetColumnLayout(ColumnLayout):
             ColumnLayout.setContentsMargins(0, 0, 0, 0)
             ColumnLayout.setSpacing(0)
 
-        Label_CaseName = QLabel()
-        Label_CaseName.setStyleSheet(LabelStyle)
-        Label_CaseName.setText(CaseName)
-        ColumnLayout_CaseName = QHBoxLayout()
-        SetColumnLayout(ColumnLayout_CaseName)
-        ColumnLayout_CaseName.addWidget(Label_CaseName)
+        Layouts = []
+        ColumnWidth = []
 
-        Label_DazzlingCheck = QLabel()
-        Label_DazzlingCheck.setStyleSheet(LabelStyle)
-        Label_DazzlingCheck.setText(DazzlingCheck)
-        ColumnLayout_DazzlingCheck = QHBoxLayout()
-        SetColumnLayout(ColumnLayout_DazzlingCheck)
-        ColumnLayout_DazzlingCheck.addWidget(Label_DazzlingCheck)
+        for Value in ValueRow:
+            Label = QLabel()
+            Label.setText(str(Value))
+            ColumnLayout = QHBoxLayout()
+            SetColumnLayout(ColumnLayout)
+            ColumnLayout.addWidget(Label)
+            Layouts += [ColumnLayout]
+            ColumnWidth += [None]
 
-        Label_MonochromeCheck = QLabel()
-        Label_MonochromeCheck.setStyleSheet(LabelStyle)
-        Label_MonochromeCheck.setText(MonochromeCheck)
-        ColumnLayout_MonochromeCheck = QHBoxLayout()
-        SetColumnLayout(ColumnLayout_MonochromeCheck)
-        ColumnLayout_MonochromeCheck.addWidget(Label_MonochromeCheck)
-
-        Label_UndertoneCheck = QLabel()
-        Label_UndertoneCheck.setStyleSheet(LabelStyle)
-        Label_UndertoneCheck.setText(UndertoneCheck)
-        ColumnLayout_UndertoneCheck = QHBoxLayout()
-        SetColumnLayout(ColumnLayout_UndertoneCheck)
-        ColumnLayout_UndertoneCheck.addWidget(Label_UndertoneCheck)
-
-        Label_TaskStatus = QLabel()
-        Label_TaskStatus.setStyleSheet(LabelStyle)
-        Label_TaskStatus.setText(TaskStatus)
-        ColumnLayout_TaskStatus = QHBoxLayout()
-        SetColumnLayout(ColumnLayout_TaskStatus)
-        ColumnLayout_TaskStatus.addWidget(Label_TaskStatus)
+        Label = QLabel()
+        Label.setText("未执行")
+        ColumnLayout_Label = QHBoxLayout()
+        SetColumnLayout(ColumnLayout_Label)
+        ColumnLayout_Label.addWidget(Label)
+        Layouts += [ColumnLayout_Label]
+        ColumnWidth += [None]
 
         CheckBox = QCheckBox()
-        #CheckBox.setStyleSheet(CheckBoxStyle)
         CheckBox.setChecked(False)
         ColumnLayout_CheckBox = QHBoxLayout()
         SetColumnLayout(ColumnLayout_CheckBox)
         ColumnLayout_CheckBox.addWidget(CheckBox)
-
-        Layouts = [ColumnLayout_CaseName, ColumnLayout_DazzlingCheck, ColumnLayout_MonochromeCheck, ColumnLayout_UndertoneCheck, ColumnLayout_TaskStatus, ColumnLayout_CheckBox]
-        ColumnWidth = [None, None, None, None, None, RowHeight]
+        ColumnLayout_CheckBox.setAlignment(Qt.AlignCenter)
+        Layouts += [ColumnLayout_CheckBox]
+        ColumnWidth += [RowHeight]
 
         TargetRow = self.currentRow() + 1
         ColumnCount = self.columnCount()
@@ -94,14 +58,22 @@ class Table_ViewTasks(QTableWidget):
             self.setColumnWidth(ColumnCount, ColumnWidth[ColumnCount]) if ColumnWidth[ColumnCount] is not None else None
         self.setRowHeight(TargetRow, RowHeight) if RowHeight is not None else None
 
-    def SetValue(self, Params: list[list] = [['CaseName', 'DazzlingCheck', 'MonochromeCheck', 'UndertoneCheck', 'TaskStatus'], ]):
-        for Param in Params:
+    def SetValue(self, Value: Union[DataFrame, dict] = {'ModuleName': [], 'CaseName': [], 'SupportedCalulation': [],}):
+        if isinstance(Value, DataFrame):
+            Headers = Value.columns.tolist() + ["测试状态", "选框"]
+            Value = Value.values.tolist()
+        if isinstance(Value, dict):
+            Headers = list(Value.keys()) + ["测试状态", "选框"]
+            Value = [list(x) for x in zip(*Value.values())]
+        for ValueRow in Value:
             QApplication.processEvents()
-            self.AddRow(Param)
+            self.setColumnCount(len(ValueRow) + 2)
+            self.setHorizontalHeaderLabels(Headers)
+            self.AddRow(ValueRow)
 
     def GetValue(self):
         ValueDict = {}
-        for colCount in range(self.columnCount() - 1):
+        for colCount in range(self.columnCount() - 2): # Remve last 2 (taskstatus&checkbox) columns
             ValueList = []
             for row in range(self.rowCount()):
                 try:
@@ -112,5 +84,19 @@ class Table_ViewTasks(QTableWidget):
                     ValueList.append(item.text()) if item is not None else None
             ValueDict[self.horizontalHeaderItem(colCount).text()] = ValueList
         return ValueDict
+
+    def GetCheckedCaseInfos(self):
+        CheckedCaseInfos = []
+        CheckBoxCol = self.columnCount() - 1
+        CaseCMDCol = self.columnCount() - 3
+        CaseNameCol = 1
+        for row in range(self.rowCount()):
+            if self.cellWidget(row, CheckBoxCol).findChild(QCheckBox).isChecked():
+                CheckedCaseInfos.append([row, self.cellWidget(row, CaseCMDCol).findChild(QLabel).text(), self.cellWidget(row, CaseNameCol).findChild(QLabel).text()])
+        return CheckedCaseInfos
+
+    def SetCheckedCaseStatus(self, CaseRow: int, Status: str = ...):
+        CheckedCaseCol= self.columnCount() - 2
+        self.cellWidget(CaseRow, CheckedCaseCol).findChild(QLabel).setText(Status)
 
 ##############################################################################################################################
