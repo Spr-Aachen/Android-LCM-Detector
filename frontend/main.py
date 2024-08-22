@@ -6,8 +6,9 @@ import json
 import socket
 import struct
 import pandas
+import subprocess
+import threading
 from pathlib import Path
-from subprocess import Popen
 from typing import Optional
 from sqlalchemy import create_engine
 from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
@@ -16,35 +17,93 @@ from PySide6.QtWidgets import *
 
 from windows.Windows import *
 from functions import Function_SetMethodExecutor
-from config import CurrentDir, ConfigDir
+from config import CurrentDir
 
 ##############################################################################################################################
 
-def adbExec(
-    TaskCMD: str = "adb shell am instrument -w -r -e debug false -e class",
-    SaveName: str = "lcm",
-    SaveLoc_PC: str = "D:/"
-):
-    adbreboot = Popen(
+def Reboot():
+    adbReboot = subprocess.Popen(
         "adb kill-server && adb start-server",
         shell = True
     )
-    adbreboot.wait()
-    SaveLoc_AD = f"/sdcard/{SaveName}.mp4"
-    adb1 = Popen(
-        f"adb shell screenrecord {SaveLoc_AD} --time-limit 360",
+    return adbReboot
+
+
+def Pull(
+    SavePath_AD: str,
+    SaveDir_PC: str
+):
+    adb3 = subprocess.Popen(
+        f"adb pull {SavePath_AD} {SaveDir_PC}",
         shell = True
     )
-    adb2 = Popen(
+    return adb3
+
+
+adbRecord = None
+StopEvent = None
+def RecordAndPull(
+    SavePath_AD: str,
+    SaveDir_PC: str,
+    RecPeriod: int = 180,
+):
+    global adbRecord
+    global StopEvent
+    i = 0
+    while not StopEvent.is_set():
+        adbRecord = subprocess.Popen(
+            f"adb shell screenrecord {SavePath_AD} --time-limit {RecPeriod}",
+            shell = True
+        )
+        adbRecord.wait()
+        adbPull = Pull(SavePath_AD, SaveDir_PC)
+        adbPull.wait()
+        i += 1
+        OldName = Path(SaveDir_PC).joinpath(Path(SavePath_AD).name).as_posix()
+        NewName = Path(SaveDir_PC).joinpath(f"{i}.{Path(SavePath_AD).suffix}").as_posix()
+        os.rename(OldName, NewName)
+
+
+def adbExec(
+    TaskCMD: str = "adb shell am instrument -w -r -e debug false -e class",
+    SaveRoot_PC: str = "D:/",
+    SaveName_PC: str = "用例名",
+    RecPeriod: int = 180,
+):
+    global adbRecord
+    global StopEvent
+
+    # Set the save location
+    SavePath_AD = "/sdcard/testcase.mp4"
+    SaveDir_PC = Path(SaveRoot_PC).joinpath(SaveName_PC).as_posix()
+    Path(SaveDir_PC).mkdir(parents = True) if not Path(SaveDir_PC).exists() else None
+
+    # Reboot server
+    adbReboot = Reboot()
+    adbReboot.wait()
+
+    # Event to signal the recording thread to stop
+    StopEvent = threading.Event()
+
+    # Start the screen recording thread
+    recordingThread = threading.Thread(
+        target = RecordAndPull,
+        args = (SavePath_AD, SaveDir_PC, RecPeriod,)
+    )
+    recordingThread.start()
+
+    # Execute the main task
+    adbTask = subprocess.Popen(
         TaskCMD,
         shell = True
     )
-    adb2.wait()
-    adb1.kill()
-    adb3 = Popen(
-        f"adb pull {SaveLoc_AD} {SaveLoc_PC}",
-    )
-    adb3.wait()
+    adbTask.wait()
+
+    # Signal the recording thread to stop and wait for it to finish
+    StopEvent.set()
+    if adbRecord is not None:
+        adbRecord.terminate()
+    recordingThread.join()
 
 
 class adbThread(QThread):
@@ -139,16 +198,20 @@ class MainWindow(Window_MainWindow):
     def startThread(self, CaseCMD: str, CaseRow: str, CaseName: str):
         if CaseCMD.strip().lower() in ("nan", ""):
             return
-        SaveName = CaseName
-        SaveLoc_PC = 'D:/' #SaveLoc_PC = self.ui.LineEdit_SaveLoc_PC.text()
+        SaveRoot_PC = Path(CurrentDir).parent.as_posix() #SaveRoot_PC = self.ui.LineEdit_SaveRootPC.text()
+        SaveName_PC = CaseName
         Function_SetMethodExecutor(self,
             Method = adbThread.Execute,
-            Params = (CaseCMD, SaveName, SaveLoc_PC),
+            Params = (CaseCMD, SaveRoot_PC, SaveName_PC),
             FinishEvent = lambda: self.ui.Table.SetCheckedCaseStatus(CaseRow, Status = "完成")
         )
 
     def ExecuteADB(self):
-        for CaseInfo in self.ui.Table.GetCheckedCaseInfos():
+        CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
+        if isinstance(CheckedCaseInfos, Exception):
+            QMessageBox.critical(self, "错误", f"{CheckedCaseInfos}")
+            return
+        for CaseInfo in CheckedCaseInfos:
             CaseRow, CaseCMD, CaseName = CaseInfo
             self.startThread(CaseCMD, CaseRow, CaseName)
 

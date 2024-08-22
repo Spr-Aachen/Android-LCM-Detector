@@ -13,6 +13,8 @@ class Table_ViewTasks(QTableWidget):
 
         self.setRowCount(0)
         self.setColumnCount(0)
+        #self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
     def AddRow(self, ValueRow: list[str]):
         RowHeight = 36
@@ -21,6 +23,7 @@ class Table_ViewTasks(QTableWidget):
             ColumnLayout.setSpacing(0)
 
         Layouts = []
+        ResizeModes = []
         ColumnWidth = []
 
         for Value in ValueRow:
@@ -30,6 +33,7 @@ class Table_ViewTasks(QTableWidget):
             SetColumnLayout(ColumnLayout)
             ColumnLayout.addWidget(Label)
             Layouts += [ColumnLayout]
+            ResizeModes += [QHeaderView.Stretch]
             ColumnWidth += [None]
 
         Label = QLabel()
@@ -38,7 +42,8 @@ class Table_ViewTasks(QTableWidget):
         SetColumnLayout(ColumnLayout_Label)
         ColumnLayout_Label.addWidget(Label)
         Layouts += [ColumnLayout_Label]
-        ColumnWidth += [None]
+        ResizeModes += [QHeaderView.Custom]
+        ColumnWidth += [1.5*RowHeight]
 
         CheckBox = QCheckBox()
         CheckBox.setChecked(False)
@@ -47,15 +52,17 @@ class Table_ViewTasks(QTableWidget):
         ColumnLayout_CheckBox.addWidget(CheckBox)
         ColumnLayout_CheckBox.setAlignment(Qt.AlignCenter)
         Layouts += [ColumnLayout_CheckBox]
+        ResizeModes += [QHeaderView.Fixed]
         ColumnWidth += [RowHeight]
 
         TargetRow = self.currentRow() + 1
         ColumnCount = self.columnCount()
         self.insertRow(TargetRow)
-        for ColumnCount in range(ColumnCount):
-            self.setCellWidget(TargetRow, ColumnCount, QWidget())
-            self.cellWidget(TargetRow, ColumnCount).setLayout(Layouts[ColumnCount])
-            self.setColumnWidth(ColumnCount, ColumnWidth[ColumnCount]) if ColumnWidth[ColumnCount] is not None else None
+        for Column in range(ColumnCount):
+            self.setCellWidget(TargetRow, Column, QWidget())
+            self.cellWidget(TargetRow, Column).setLayout(Layouts[Column])
+            self.horizontalHeader().setSectionResizeMode(Column, ResizeModes[Column])
+            self.setColumnWidth(Column, ColumnWidth[Column]) if ColumnWidth[Column] is not None else None
         self.setRowHeight(TargetRow, RowHeight) if RowHeight is not None else None
 
     def SetValue(self, Value: Union[DataFrame, dict] = {'ModuleName': [], 'CaseName': [], 'SupportedCalulation': [],}):
@@ -85,7 +92,7 @@ class Table_ViewTasks(QTableWidget):
             ValueDict[self.horizontalHeaderItem(colCount).text()] = ValueList
         return ValueDict
 
-    def GetCheckedCaseInfos(self):
+    def GetCheckedCaseInfos(self, AllowMultiple: bool = False):
         CheckedCaseInfos = []
         CheckBoxCol = self.columnCount() - 1
         CaseCMDCol = self.columnCount() - 3
@@ -93,6 +100,8 @@ class Table_ViewTasks(QTableWidget):
         for row in range(self.rowCount()):
             if self.cellWidget(row, CheckBoxCol).findChild(QCheckBox).isChecked():
                 CheckedCaseInfos.append([row, self.cellWidget(row, CaseCMDCol).findChild(QLabel).text(), self.cellWidget(row, CaseNameCol).findChild(QLabel).text()])
+        if not AllowMultiple and len(CheckedCaseInfos) > 1:
+            CheckedCaseInfos = Exception("Multiple cases selected")
         return CheckedCaseInfos
 
     def SetCheckedCaseStatus(self, CaseRow: int, Status: str = ...):

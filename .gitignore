@@ -18,6 +18,7 @@
 **/build/
 **/dist/
 **/*.db
+**/*.mp4
 
 # Others
 **/*venv/
