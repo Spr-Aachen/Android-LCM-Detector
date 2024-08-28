@@ -1,0 +1,90 @@
+import os
+import io
+import sys
+import json
+import uvicorn
+import argparse
+from typing import List, Union, Optional
+from fastapi import FastAPI, Request, Response, status, Depends, File, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
+from tools.adbExec import *
+from tools.videoAnalyse import *
+
+##############################################################################################################################
+
+output_folder = './tmp'
+
+
+# App definition
+app = FastAPI()
+
+# Set all CORS enabled origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+@app.post('/execute_adb')
+async def execute_adb(request: Request):
+    data = await request.json()
+    CaseCMD = data.get('CaseCMD')
+    SaveRoot_PC = data.get('SaveRoot_PC')
+    SaveName_PC = data.get('SaveName_PC')
+    adbExec(
+        CaseCMD,
+        SaveRoot_PC,
+        SaveName_PC
+    )
+    return {'message': 'Done'}
+    
+
+'''
+@app.post("/uploads")
+async def file_upload(files: List[UploadFile] = File(...)):
+    for file in files:
+        with open(file, 'wb') as f:
+            for i in iter(lambda: file.file.read(1024 * 1024 * 10), b''):
+                f.write(i)
+        f.close()
+    return {"file_name": [file.filename for file in files]}
+'''
+
+@app.post('/analysis_video')
+async def analysis_video(request: Request):
+    data = await request.json()
+    video_path = data.get('file')
+    bChkH = data.get('chkHua')
+    bChkBW = data.get('chkB_ok_W')
+    bChkSplit_then_BW = data.get('chkSplit_then_BokW')
+    bChkNobarSplit_then_BW = data.get('chkNobarSplit_then_BW')
+    bChkBlackback = data.get('chkBlackback')
+    result = videoAnalyser(
+        video_path,
+        bChkH,
+        bChkBW,
+        bChkSplit_then_BW,
+        bChkNobarSplit_then_BW,
+        bChkBlackback,
+        output_folder
+    )
+    return JSONResponse(content = result)
+
+##############################################################################################################################
+
+if __name__ == '__main__':
+    uvicorn.run(
+        app = app,
+        host = 'localhost',
+        port = 8080
+    )
+
+##############################################################################################################################

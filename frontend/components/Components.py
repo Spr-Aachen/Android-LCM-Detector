@@ -101,11 +101,15 @@ class Table_ViewTasks(QTableWidget):
             if self.cellWidget(row, CheckBoxCol).findChild(QCheckBox).isChecked():
                 CheckedCaseInfos.append([row, self.cellWidget(row, CaseCMDCol).findChild(QLabel).text(), self.cellWidget(row, CaseNameCol).findChild(QLabel).text()])
         if not AllowMultiple and len(CheckedCaseInfos) > 1:
-            CheckedCaseInfos = Exception("Multiple cases selected")
+            CheckedCaseInfos.append(Exception("Multiple cases selected"))
         return CheckedCaseInfos
 
     def SetCheckedCaseStatus(self, CaseRow: int, Status: str = ...):
-        CheckedCaseCol= self.columnCount() - 2
+        CheckedCaseCol = self.columnCount() - 2
         self.cellWidget(CaseRow, CheckedCaseCol).findChild(QLabel).setText(Status)
+
+    def GetAnalysationTypes(self, CaseRow: int):
+        AnalysationTypeCol = self.columnCount() - 4
+        return self.cellWidget(CaseRow, AnalysationTypeCol).findChild(QLabel).text().splitlines()
 
 ##############################################################################################################################
