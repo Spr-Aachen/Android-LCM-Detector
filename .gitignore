@@ -10,7 +10,6 @@
 **/sql/
 
 # Frontend&Backend generated files
-**/TestResult.json
 **/Profile/
 
 # Generated contents
@@ -19,6 +18,7 @@
 **/dist/
 **/*.db
 **/*.mp4
+**/*.webp
 
 # Others
 **/*venv/

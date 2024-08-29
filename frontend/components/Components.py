@@ -8,6 +8,11 @@ from assets.Sources import *
 ##############################################################################################################################
 
 class Table_ViewTasks(QTableWidget):
+    CaseModuleCol = 0
+    CaseNameCol = 1
+    CaseChkTypeCol = 6
+    CaseCMDCol = 7
+
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
 
@@ -92,14 +97,22 @@ class Table_ViewTasks(QTableWidget):
             ValueDict[self.horizontalHeaderItem(colCount).text()] = ValueList
         return ValueDict
 
+    def FindRow(self, CaseModule, CaseName):
+        '''
+        Assume the combinition of CaseModule and CaseName is unique
+        '''
+        for row in range(self.rowCount()):
+            if self.cellWidget(row, self.CaseModuleCol).findChild(QLabel).text() == CaseModule and self.cellWidget(row, self.CaseNameCol).findChild(QLabel).text() == CaseName:
+                return row
+
     def GetCheckedCaseInfos(self, AllowMultiple: bool = False):
-        CheckedCaseInfos = []
         CheckBoxCol = self.columnCount() - 1
-        CaseCMDCol = self.columnCount() - 3
-        CaseNameCol = 1
+        CheckedCaseInfos = []
         for row in range(self.rowCount()):
             if self.cellWidget(row, CheckBoxCol).findChild(QCheckBox).isChecked():
-                CheckedCaseInfos.append([row, self.cellWidget(row, CaseCMDCol).findChild(QLabel).text(), self.cellWidget(row, CaseNameCol).findChild(QLabel).text()])
+                CaseCMD = self.cellWidget(row, self.CaseCMDCol).findChild(QLabel).text()
+                CaseName = f"[{self.cellWidget(row, self.CaseModuleCol).findChild(QLabel).text()}]{self.cellWidget(row, self.CaseNameCol).findChild(QLabel).text()}"
+                CheckedCaseInfos.append([row, CaseCMD, CaseName])
         if not AllowMultiple and len(CheckedCaseInfos) > 1:
             CheckedCaseInfos.append(Exception("Multiple cases selected"))
         return CheckedCaseInfos
@@ -108,8 +121,7 @@ class Table_ViewTasks(QTableWidget):
         CheckedCaseCol = self.columnCount() - 2
         self.cellWidget(CaseRow, CheckedCaseCol).findChild(QLabel).setText(Status)
 
-    def GetAnalysationTypes(self, CaseRow: int):
-        AnalysationTypeCol = self.columnCount() - 4
-        return self.cellWidget(CaseRow, AnalysationTypeCol).findChild(QLabel).text().splitlines()
+    def GetCaseChkTypes(self, CaseRow: int):
+        return self.cellWidget(CaseRow, self.CaseChkTypeCol).findChild(QLabel).text().splitlines()
 
 ##############################################################################################################################

@@ -106,19 +106,19 @@ class Ui_MainWindow(object):
         self.gridLayout_5.addWidget(self.Button_Analyse, 0, 0, 1, 1)
 
         self.StackedWidget_Analyse.addWidget(self.Page_AnalyseButton)
-        self.page_AnalyseProgressBar = QWidget()
-        self.page_AnalyseProgressBar.setObjectName(u"page_AnalyseProgressBar")
-        self.gridLayout_4 = QGridLayout(self.page_AnalyseProgressBar)
+        self.Page_AnalyseProgressBar = QWidget()
+        self.Page_AnalyseProgressBar.setObjectName(u"Page_AnalyseProgressBar")
+        self.gridLayout_4 = QGridLayout(self.Page_AnalyseProgressBar)
         self.gridLayout_4.setSpacing(0)
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.gridLayout_4.setContentsMargins(0, 0, 0, 0)
-        self.ProgressBar_Analyse = QProgressBar(self.page_AnalyseProgressBar)
+        self.ProgressBar_Analyse = QProgressBar(self.Page_AnalyseProgressBar)
         self.ProgressBar_Analyse.setObjectName(u"ProgressBar_Analyse")
         self.ProgressBar_Analyse.setValue(24)
 
         self.gridLayout_4.addWidget(self.ProgressBar_Analyse, 0, 0, 1, 1)
 
-        self.StackedWidget_Analyse.addWidget(self.page_AnalyseProgressBar)
+        self.StackedWidget_Analyse.addWidget(self.Page_AnalyseProgressBar)
 
         self.gridLayout.addWidget(self.StackedWidget_Analyse, 8, 0, 1, 1)
 

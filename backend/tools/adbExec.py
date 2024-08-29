@@ -29,8 +29,7 @@ def RecordAndPull(
 
 def adbExec(
     TaskCMD: str = "adb shell am instrument -w -r -e debug false -e class",
-    SaveRoot_PC: str = "D:/",
-    SaveName_PC: str = "用例名",
+    SaveDir_PC: str = "D:/用例名",
     RecPeriod: int = 180,
 ):
     global adbRecord
@@ -38,7 +37,6 @@ def adbExec(
 
     # Set the save location
     SavePath_AD = "/sdcard/testcase.mp4"
-    SaveDir_PC = Path(SaveRoot_PC).joinpath(SaveName_PC).as_posix()
     Path(SaveDir_PC).mkdir(parents = True) if not Path(SaveDir_PC).exists() else None
 
     # Reboot server

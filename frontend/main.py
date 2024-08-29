@@ -2,6 +2,7 @@
 
 import os
 import sys
+import re
 import json
 import requests
 import pandas
@@ -12,8 +13,8 @@ from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
 from PySide6.QtGui import QTextCursor, QAction, QStandardItem
 from PySide6.QtWidgets import *
 
+from functions import UpdateDict
 from windows.Windows import *
-from functions import RenameIfExists
 from config import CurrentDir
 
 ##############################################################################################################################
@@ -23,14 +24,12 @@ def adbRequest(
     ip: str = 'localhost',
     port: int = 8080,
     CaseCMD: str = ...,
-    SaveRoot_PC: str = ...,
-    SaveName_PC: str = ...
+    SaveDir_PC: str = ...
 ):
     URL = f"{protocol}://{ip}:{port}/execute_adb"
     Payload = {
         'CaseCMD': CaseCMD,
-        'SaveRoot_PC': SaveRoot_PC,
-        'SaveName_PC': SaveName_PC
+        'SaveDir_PC': SaveDir_PC
     }
     with requests.post(
         url = URL,
@@ -51,12 +50,29 @@ def adbRequest(
 
 
 class adbThread(QThread):
-    def __init__(self):
+    def __init__(self,
+        protocol: str = 'http',
+        ip: str = 'localhost',
+        port: int = 8080,
+        CaseCMD: str = ...,
+        SaveDir_PC: str = ...
+    ):
         super().__init__()
 
-    def run(self, *Params):
-        print(*Params)
-        adbRequest(*Params)
+        self.protocol = protocol
+        self.ip = ip
+        self.port = port
+        self.CaseCMD = CaseCMD
+        self.SaveDir_PC = SaveDir_PC
+
+    def run(self):
+        adbRequest(
+            protocol = self.protocol,
+            ip = self.ip,
+            port = self.port,
+            CaseCMD = self.CaseCMD,
+            SaveDir_PC = self.SaveDir_PC
+        )
 
 ##############################################################################################################################
 
@@ -74,6 +90,7 @@ def analysationRequest(
     port: int = 8080,
     file: str = ...,
     types: list[str] = ...,
+    output_folder: str = ...,
 ):
     URL = f"{protocol}://{ip}:{port}/analysis_video"
     Payload = {
@@ -82,7 +99,8 @@ def analysationRequest(
         'chkB_ok_W': TypeDict['chkB_ok_W'] in types,
         'chkSplit_then_BokW': TypeDict['chkNobarSplit_then_BW'] in types,
         'chkNobarSplit_then_BW': TypeDict['chkNobarSplit_then_BW'] in types,
-        'chkBlackback': TypeDict['chkBlackback'] in types
+        'chkBlackback': TypeDict['chkBlackback'] in types,
+        'output_folder': output_folder
     }
     with requests.post(
         url = URL,
@@ -107,12 +125,32 @@ def analysationRequest(
 class analysationThread(QThread):
     dictReceived = Signal(dict)
 
-    def __init__(self):
+    def __init__(self,
+        protocol: str = 'http',
+        ip: str = 'localhost',
+        port: int = 8080,
+        filesAndTypes: dict = ...,
+        output_folder: str = ...
+    ):
         super().__init__()
 
-    def run(self, *Params):
-        results, statuscode = analysationRequest(*Params)
-        self.dictReceived.emit(results)
+        self.protocol = protocol
+        self.ip = ip
+        self.port = port
+        self.filesAndTypes = filesAndTypes
+        self.output_folder = output_folder
+
+    def run(self):
+        for file, types in self.filesAndTypes.items():
+            results, statuscode = analysationRequest(
+                protocol = self.protocol,
+                ip = self.ip,
+                port = self.port,
+                file = file,
+                types = types,
+                output_folder = self.output_folder
+            )
+            self.dictReceived.emit(results)
 
 ##############################################################################################################################
 
@@ -120,8 +158,25 @@ class MainWindow(Window_MainWindow):
 
     CaseDict = {}
 
+    ResultDict = {}
+
     def __init__(self):
         super().__init__()
+
+    def updateCaseDict(self, CaseRow, SaveDir_PC):
+        self.CaseDict[CaseRow] = SaveDir_PC
+
+    def loadCaseDict(self):
+        SaveRoot_PC = self.ui.LineEdit_pcSaveLoc.text()
+        for DirName in os.listdir(SaveRoot_PC):
+            match = re.match(r'\[.*\]', DirName)
+            if match is None:
+                continue
+            CaseModule, CaseName = match.group(0).strip('[').strip(']'), DirName.replace(match.group(0), "")
+            CaseRow = self.ui.Table.FindRow(CaseModule, CaseName)
+            if CaseRow is None:
+                continue
+            self.updateCaseDict(CaseRow, Path(SaveRoot_PC).joinpath(DirName).as_posix())
 
     def import_data_to_table(self, df: pandas.DataFrame):
         # 清空表格
@@ -171,21 +226,37 @@ class MainWindow(Window_MainWindow):
                 # 导入Excel数据到表格
                 self.import_data_to_table(df)
                 self.export_data_to_sqlite()
+                # 加载CaseDict
+                self.loadCaseDict()
 
-    def ExecuteADB(self):
+    def getCheckedCaseInfo(self):
         CheckedCaseInfo = self.ui.Table.GetCheckedCaseInfos(AllowMultiple = False)[0]
         if isinstance(CheckedCaseInfo, Exception):
             QMessageBox.critical(self, "错误", f"{CheckedCaseInfo}")
             return
         CaseRow, CaseCMD, CaseName = CheckedCaseInfo
+        return CaseRow, CaseCMD, CaseName
+
+    def ExecuteADB(self):
+        CheckedCaseInfo = self.getCheckedCaseInfo()
+        if CheckedCaseInfo is None:
+            return
+        CaseRow, CaseCMD, CaseName = CheckedCaseInfo
         if CaseCMD.strip().lower() in ("nan", ""):
             return
         SaveRoot_PC = self.ui.LineEdit_pcSaveLoc.text()
-        SaveName_PC = CaseName
-        SaveDir_PC = RenameIfExists(Path(SaveRoot_PC).joinpath(SaveName_PC).as_posix())
-        self.CaseDict[CaseRow] = SaveDir_PC
-        thread = adbThread()
-        thread.finished.connect(
+        SaveDir_PC = Path(SaveRoot_PC).joinpath(CaseName).as_posix()
+        # Update CaseDict
+        self.updateCaseDict(CaseRow, SaveDir_PC)
+        # Start adb thread
+        self.adbThread = adbThread(
+            'http',
+            'localhost',
+            8080,
+            CaseCMD,
+            SaveDir_PC
+        )
+        self.adbThread.finished.connect(
             lambda: (
                 self.ui.Table.SetCheckedCaseStatus(CaseRow, Status = "完成"),
                 self.ui.ProgressBar_adbExec.setRange(0, 100),
@@ -193,59 +264,52 @@ class MainWindow(Window_MainWindow):
                 self.ui.StackedWidget_adbExec.setCurrentWidget(self.ui.Page_adbExecButton)
             )
         )
-        thread.run(
-            'http',
-            'localhost',
-            8080,
-            CaseCMD,
-            SaveRoot_PC,
-            SaveName_PC
-        )
+        self.adbThread.start()
         self.ui.ProgressBar_adbExec.setRange(0, 0)
         self.ui.StackedWidget_adbExec.setCurrentWidget(self.ui.Page_adbExecProgressBar)
 
+    def updateResultDict(self, CaseName: str, result: dict):
+        result_old = self.ResultDict[CaseName]
+        self.ResultDict[CaseName] = UpdateDict(result_old, result)
+
     def ExecuteAnalysation(self):
-        CheckedCaseInfo = self.ui.Table.GetCheckedCaseInfos(AllowMultiple = False)[0]
-        if isinstance(CheckedCaseInfo, Exception):
-            QMessageBox.critical(self, "错误", f"{CheckedCaseInfo}")
+        CheckedCaseInfo = self.getCheckedCaseInfo()
+        if CheckedCaseInfo is None:
             return
         CaseRow, CaseCMD, CaseName = CheckedCaseInfo
-        SaveRoot_PC = self.ui.LineEdit_pcSaveLoc.text()
         SaveDir_PC = self.CaseDict[CaseRow]
-        SaveName_PC = Path(SaveDir_PC).name
-        for DirName in os.listdir(SaveRoot_PC):
-            if DirName != SaveName_PC:
+        FilesAndTypes = {}
+        for FileName in os.listdir(SaveDir_PC):
+            if not FileName.endswith(".mp4"):
                 continue
-            for FileName in os.listdir(SaveDir_PC):
-                if not FileName.endswith(".mp4"):
-                    continue
-                isLast = FileName == os.listdir(SaveDir_PC)[-1]
-                thread = analysationThread()
-                thread.dictReceived.connect(
-                    lambda dict: 
-                )
-                thread.finished.connect(
-                    lambda: (
-                        self.ui.ProgressBar_Analyse.setRange(0, 100),
-                        self.ui.ProgressBar_Analyse.setValue(100),
-                        self.ui.StackedWidget_Analyse.setCurrentWidget(self.ui.Page_adbExecButton)
-                    )
-                ) if isLast else None
-                thread.run(
-                    'http',
-                    'localhost',
-                    8080,
-                    Path(SaveDir_PC).joinpath(FileName).as_posix(),
-                    self.ui.Table.GetAnalysationTypes(CaseRow)
-                )
-            self.ui.ProgressBar_Analyse.setRange(0, 0)
-            self.ui.StackedWidget_Analyse.setCurrentWidget(self.ui.Page_adbExecProgressBar)
-            break
+            FilesAndTypes[Path(SaveDir_PC).joinpath(FileName).as_posix()] = self.ui.Table.GetCaseChkTypes(CaseRow)
+        # Set the output folder
+        output_folder = SaveDir_PC
+        # Start analysation thread
+        self.AnalysationThread = analysationThread(
+            'http',
+            'localhost',
+            8080,
+            FilesAndTypes,
+            output_folder
+        )
+        self.AnalysationThread.dictReceived.connect(
+            lambda dict: self.updateResultDict(CaseName, dict)
+        )
+        self.AnalysationThread.finished.connect(
+            lambda: (
+                self.ui.ProgressBar_Analyse.setRange(0, 100),
+                self.ui.ProgressBar_Analyse.setValue(100),
+                self.ui.StackedWidget_Analyse.setCurrentWidget(self.ui.Page_AnalyseButton)
+            )
+        )
+        self.AnalysationThread.start()
+        self.ui.ProgressBar_Analyse.setRange(0, 0)
+        self.ui.StackedWidget_Analyse.setCurrentWidget(self.ui.Page_AnalyseProgressBar)
 
     def CheckadbOutput(self):
-        CheckedCaseInfo = self.ui.Table.GetCheckedCaseInfos(AllowMultiple = False)[0]
-        if isinstance(CheckedCaseInfo, Exception):
-            QMessageBox.critical(self, "错误", f"{CheckedCaseInfo}")
+        CheckedCaseInfo = self.getCheckedCaseInfo()
+        if CheckedCaseInfo is None:
             return
         CaseRow, CaseCMD, CaseName = CheckedCaseInfo
         SaveDir_PC = self.CaseDict[CaseRow]
@@ -256,13 +320,21 @@ class MainWindow(Window_MainWindow):
             return
 
     def CheckAnalysationOutput(self):
-        CheckedCaseInfo = self.ui.Table.GetCheckedCaseInfos(AllowMultiple = False)[0]
-        if isinstance(CheckedCaseInfo, Exception):
-            QMessageBox.critical(self, "错误", f"{CheckedCaseInfo}")
+        CheckedCaseInfo = self.getCheckedCaseInfo()
+        if CheckedCaseInfo is None:
             return
         CaseRow, CaseCMD, CaseName = CheckedCaseInfo
+        '''
+        imageDict = self.ResultDict[CaseName]
+        imageWindow = ImageWindow(imageDict)
+        imageWindow.show()
+        '''
         SaveDir_PC = self.CaseDict[CaseRow]
-        
+        try:
+            os.startfile(SaveDir_PC)
+        except:
+            QMessageBox.critical(self, "错误", f"无法打开目录: {SaveDir_PC}")
+            return
 
     def Main(self):
         self.setWindowTitle("Excel Data to Table")

@@ -17,9 +17,6 @@ from tools.videoAnalyse import *
 
 ##############################################################################################################################
 
-output_folder = './tmp'
-
-
 # App definition
 app = FastAPI()
 
@@ -37,12 +34,10 @@ app.add_middleware(
 async def execute_adb(request: Request):
     data = await request.json()
     CaseCMD = data.get('CaseCMD')
-    SaveRoot_PC = data.get('SaveRoot_PC')
-    SaveName_PC = data.get('SaveName_PC')
+    SaveDir_PC = data.get('SaveDir_PC')
     adbExec(
         CaseCMD,
-        SaveRoot_PC,
-        SaveName_PC
+        SaveDir_PC
     )
     return {'message': 'Done'}
     
@@ -67,6 +62,7 @@ async def analysis_video(request: Request):
     bChkSplit_then_BW = data.get('chkSplit_then_BokW')
     bChkNobarSplit_then_BW = data.get('chkNobarSplit_then_BW')
     bChkBlackback = data.get('chkBlackback')
+    output_folder = data.get('output_folder')
     result = videoAnalyser(
         video_path,
         bChkH,
