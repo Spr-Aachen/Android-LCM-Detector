@@ -5,7 +5,7 @@ from PIL import Image, ImageFile
 
 ##############################################################################################################################
 
-def extract_frames(video_path, output_folder, filename_no_ext):
+def extract_frames(video_path, output_folder, filename_no_ext, enable_imagesave=False):
     # Load the video
     cap = cv2.VideoCapture(video_path)
 
@@ -21,7 +21,7 @@ def extract_frames(video_path, output_folder, filename_no_ext):
 
         formatted_n = f"{frame_count:04}"
         frame_filename = os.path.join(output_folder, filename_no_ext, f"{formatted_n}.webp")  # Save each frame as an image
-        cv2.imwrite(frame_filename, frame,[cv2.IMWRITE_WEBP_QUALITY, 90])
+        cv2.imwrite(frame_filename, frame,[cv2.IMWRITE_WEBP_QUALITY, 90]) if enable_imagesave else None
         frame_count += 1
 
     # Release the video capture object

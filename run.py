@@ -13,19 +13,19 @@ CurrentDir = sys.path[0]
 
 
 def run(
+    ModelDir: str,
 ):
     # 后台启动
     BackendDir = Path(f'{CurrentDir}{os.sep}backend').as_posix()
     backendFileStem = Path(f'{BackendDir}{os.sep}main').as_posix()
     if Path(f'{backendFileStem}.py').exists():
         Popen(
-            f'python "{backendFileStem}.py"',
+            f'python "{backendFileStem}.py" --modeldir "{ModelDir}"',
             shell = True
         )
     if Path(f'{backendFileStem}.exe').exists():
         Popen(
-            f'"{backendFileStem}.exe"',
-            shell = True
+            f'"{backendFileStem}.exe"'
         )
 
     # 前台启动
@@ -38,14 +38,14 @@ def run(
         )
     if Path(f'{FrontendFileStem}.exe').exists():
         Popen(
-            f'"{FrontendFileStem}.exe"',
-            shell = True
+            f'"{FrontendFileStem}.exe"'
         )
 
 ##############################################################################################################################
 
 if __name__ == "__main__":
     run(
+        ModelDir = f'{CurrentDir}{os.sep}models'
     )
 
 ##############################################################################################################################

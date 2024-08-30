@@ -41,7 +41,7 @@ def adbRequest(
                     content = chunk.decode('utf-8', errors = 'ignore')
                     try:
                         parsed_content = json.loads(content)
-                        result = parsed_content['data']
+                        result = parsed_content['message']
                         return result, response.status_code
                     except:
                         continue
@@ -112,10 +112,8 @@ def analysationRequest(
                     content = chunk.decode('utf-8', errors = 'ignore')
                     try:
                         parsed_content = json.loads(content)
-                        results = dict(parsed_content)
-                        for key, value in results.items():
-                            results.pop(key) if len(value) == 0 else None
-                        return results, response.status_code
+                        result = parsed_content['message']
+                        return result, response.status_code
                     except:
                         continue
         else:
@@ -269,6 +267,8 @@ class MainWindow(Window_MainWindow):
         self.ui.StackedWidget_adbExec.setCurrentWidget(self.ui.Page_adbExecProgressBar)
 
     def updateResultDict(self, CaseName: str, result: dict):
+        for key, value in result.copy().items():
+            result.pop(key) if len(value) == 0 else None
         result_old = self.ResultDict[CaseName]
         self.ResultDict[CaseName] = UpdateDict(result_old, result)
 
@@ -324,17 +324,12 @@ class MainWindow(Window_MainWindow):
         if CheckedCaseInfo is None:
             return
         CaseRow, CaseCMD, CaseName = CheckedCaseInfo
-        '''
         imageDict = self.ResultDict[CaseName]
+        '''
         imageWindow = ImageWindow(imageDict)
         imageWindow.show()
         '''
-        SaveDir_PC = self.CaseDict[CaseRow]
-        try:
-            os.startfile(SaveDir_PC)
-        except:
-            QMessageBox.critical(self, "错误", f"无法打开目录: {SaveDir_PC}")
-            return
+        print(imageDict)
 
     def Main(self):
         self.setWindowTitle("Excel Data to Table")

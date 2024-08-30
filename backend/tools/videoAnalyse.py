@@ -14,9 +14,6 @@ from utils.cv import *
 # Get current directory
 CurrentDir = sys.path[0]
 
-# Set the directory where models locate
-ModelDir = Path(CurrentDir).parent.parent.joinpath('models')
-
 ##############################################################################################################################
 
 def videoAnalyser(
@@ -26,7 +23,8 @@ def videoAnalyser(
     bChkSplit_then_BW: bool,
     bChkNobarSplit_then_BW: bool,
     bChkBlackback: bool,
-    output_folder: str
+    output_folder: str,
+    ModelDir: str
 ):
     print(Fore.GREEN, 'analysis_video', Style.RESET_ALL)
 
@@ -34,7 +32,7 @@ def videoAnalyser(
 
     # 展开得到frame
     subdir = os.path.basename(video_path).split('.')[0]
-    extract_frames(video_path, output_folder, subdir) # FIX:作为调试,先注释掉
+    extract_frames(video_path, output_folder, subdir)
 
     # 检查花屏
     lst_file = os.listdir(Path(output_folder).joinpath(subdir).as_posix())

@@ -17,6 +17,15 @@ from tools.videoAnalyse import *
 
 ##############################################################################################################################
 
+# 启动参数解析，启动环境，应用端口由命令行传入
+parser = argparse.ArgumentParser()
+parser.add_argument("--modeldir", help = "models目录", type = str, default = './models')
+args = parser.parse_args()
+
+ModelDir = args.modeldir
+
+##############################################################################################################################
+
 # App definition
 app = FastAPI()
 
@@ -70,9 +79,10 @@ async def analysis_video(request: Request):
         bChkSplit_then_BW,
         bChkNobarSplit_then_BW,
         bChkBlackback,
-        output_folder
+        output_folder,
+        ModelDir
     )
-    return JSONResponse(content = result)
+    return {'message': result}
 
 ##############################################################################################################################
 
