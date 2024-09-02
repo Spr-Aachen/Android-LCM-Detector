@@ -166,6 +166,7 @@ class MainWindow(Window_MainWindow):
             try:
                 # 使用pandas读取Excel文件
                 df = pandas.read_excel(file_path, sheet_name = sheet_name) if ok and len(sheet_name) > 0 else pandas.read_excel(file_path)
+                df.fillna("", inplace=True)
             except Exception as e:
                 print(f"读取Excel文件时出错: {e}")
             else:
@@ -214,7 +215,10 @@ class MainWindow(Window_MainWindow):
             )
         )
         self.Thread.dictReceived.connect(
-            lambda dict: self.updateResultDict(CaseName, dict)
+            lambda dict: (
+                self.updateResultDict(CaseName, dict),
+                self.CheckAnalysationOutput()
+            )
         )
         self.Thread.start()
         self.ui.ProgressBar_adbExec.setRange(0, 0)

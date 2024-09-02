@@ -19,7 +19,7 @@ class Table_ViewTasks(QTableWidget):
         self.setRowCount(0)
         self.setColumnCount(0)
         #self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
     def AddRow(self, ValueRow: list[str]):
         RowHeight = 36
@@ -38,7 +38,7 @@ class Table_ViewTasks(QTableWidget):
             SetColumnLayout(ColumnLayout)
             ColumnLayout.addWidget(Label)
             Layouts += [ColumnLayout]
-            ResizeModes += [QHeaderView.Stretch]
+            ResizeModes += [QHeaderView.ResizeToContents] if ValueRow.index(Value) != self.CaseCMDCol else [QHeaderView.Stretch]
             ColumnWidth += [None]
 
         Label = QLabel()
@@ -47,8 +47,8 @@ class Table_ViewTasks(QTableWidget):
         SetColumnLayout(ColumnLayout_Label)
         ColumnLayout_Label.addWidget(Label)
         Layouts += [ColumnLayout_Label]
-        ResizeModes += [QHeaderView.Custom]
-        ColumnWidth += [1.5*RowHeight]
+        ResizeModes += [QHeaderView.ResizeToContents]
+        ColumnWidth += [None]
 
         CheckBox = QCheckBox()
         CheckBox.setChecked(False)
@@ -82,10 +82,12 @@ class Table_ViewTasks(QTableWidget):
             self.setColumnCount(len(ValueRow) + 2)
             self.setHorizontalHeaderLabels(Headers)
             self.AddRow(ValueRow)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
     def GetValue(self):
         ValueDict = {}
-        for colCount in range(self.columnCount() - 2): # Remve last 2 (taskstatus&checkbox) columns
+        for colCount in range(self.columnCount() - 2): # Remove last 2 (taskstatus&checkbox) columns
             ValueList = []
             for row in range(self.rowCount()):
                 try:

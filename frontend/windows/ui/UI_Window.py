@@ -16,7 +16,7 @@ class Ui_MainWindow(object):
         self.gridLayout = QGridLayout(self.centralwidget)
         self.gridLayout.setSpacing(12)
         self.gridLayout.setObjectName(u"gridLayout")
-        self.gridLayout.setContentsMargins(12, 12, 12, 12)
+        self.gridLayout.setContentsMargins(21, 12, 21, 12)
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setSpacing(12)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
