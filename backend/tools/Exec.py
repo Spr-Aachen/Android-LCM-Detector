@@ -1,3 +1,5 @@
+import subprocess
+import threading
 import os
 import sys
 import shutil
@@ -8,6 +10,7 @@ from typing import List, Tuple, Dict
 from colorama import Fore, Style
 
 from utils.cv import *
+from utils.adb import *
 
 ##############################################################################################################################
 
@@ -16,6 +19,16 @@ CurrentDir = sys.path[0]
 
 ##############################################################################################################################
 
+def UpdateDict(Dict1, Dict2):
+    for key, value in Dict2.items():
+        if key in Dict1:
+            Dict1[key] += value
+        else:
+            Dict1[key] = value
+    return Dict1
+
+
+Result = {}
 def videoAnalyser(
     video_path: str,
     bChkH: bool,
@@ -26,6 +39,8 @@ def videoAnalyser(
     output_folder: str,
     ModelDir: str
 ):
+    global Result
+
     print(Fore.GREEN, 'analysis_video', Style.RESET_ALL)
 
     print(Fore.GREEN, 'analysis_video', video_path, bChkH, bChkBW, bChkSplit_then_BW, Style.RESET_ALL)
@@ -134,13 +149,111 @@ def videoAnalyser(
             if is_mostly_black(Path(output_folder).joinpath(subdir, file).as_posix()):
                 lst_outputBlackback.append(file)
 
-    return {
-        'lst_outputH': lst_outputH,
-        'lst_outputB': lst_outputB,
-        'lst_outputW': lst_outputW,
-        'lst_outputSplitB': lst_outputSplitB,
-        'lst_outputNobarSplitB': lst_outputNobarSplitB,
-        'lst_outputBlackback':lst_outputBlackback
-    }
+    UpdateDict(
+        Dict1 = Result,
+        Dict2 = {
+            'lst_outputH': lst_outputH,
+            'lst_outputB': lst_outputB,
+            'lst_outputW': lst_outputW,
+            'lst_outputSplitB': lst_outputSplitB,
+            'lst_outputNobarSplitB': lst_outputNobarSplitB,
+            'lst_outputBlackback':lst_outputBlackback
+        }
+    )
+
+
+adbRecord = None
+StopEvent = None
+def RecordAndPull(
+    SavePath_AD: str,
+    SaveDir_PC: str,
+    bChkH,
+    bChkBW,
+    bChkSplit_then_BW,
+    bChkNobarSplit_then_BW,
+    bChkBlackback,
+    output_folder,
+    ModelDir,
+    RecPeriod: int = 180,
+):
+    global adbRecord
+    global StopEvent
+    i = 0
+    analysingThreads = []
+    while not StopEvent.is_set():
+        try:
+            adbRecord = Record(SavePath_AD, RecPeriod)
+            adbRecord.wait()
+            adbPull = Pull(SavePath_AD, SaveDir_PC)
+            adbPull.wait()
+            i += 1
+            OldName = Path(SaveDir_PC).joinpath(Path(SavePath_AD).name).as_posix()
+            NewName = Path(SaveDir_PC).joinpath(f"{i}{Path(SavePath_AD).suffix}").as_posix()
+            os.rename(OldName, NewName)
+        except:
+            pass
+        finally:
+            analysingThread = threading.Thread(
+                target = videoAnalyser,
+                args = (NewName, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir)
+            )
+            analysingThreads.append(analysingThread)
+            analysingThread.start()
+    else:
+        for analysingThread in analysingThreads:
+            try:
+                analysingThread.join()
+            except:
+                pass
+
+
+def Exec(
+    TaskCMD,
+    SaveDir_PC,
+    bChkH,
+    bChkBW,
+    bChkSplit_then_BW,
+    bChkNobarSplit_then_BW,
+    bChkBlackback,
+    output_folder,
+    ModelDir,
+    RecPeriod: int = 180,
+):
+    global adbRecord
+    global StopEvent
+    global Result
+
+    # Set the save location
+    SavePath_AD = "/sdcard/testcase.mp4"
+    Path(SaveDir_PC).mkdir(parents = True) if not Path(SaveDir_PC).exists() else None
+
+    # Reboot server
+    adbReboot = Reboot()
+    adbReboot.wait()
+
+    # Event to signal the recording thread to stop
+    StopEvent = threading.Event()
+
+    # Start the screen recording thread
+    recordingThread = threading.Thread(
+        target = RecordAndPull,
+        args = (SavePath_AD, SaveDir_PC, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, RecPeriod)
+    )
+    recordingThread.start()
+
+    # Execute the main task
+    adbTask = subprocess.Popen(
+        TaskCMD,
+        shell = True
+    )
+    adbTask.wait()
+
+    # Signal the recording thread to stop and wait for it to finish
+    StopEvent.set()
+    if adbRecord is not None:
+        adbRecord.terminate()
+    recordingThread.join()
+
+    return Result
 
 ##############################################################################################################################

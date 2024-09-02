@@ -14,8 +14,11 @@ class Ui_MainWindow(object):
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout = QGridLayout(self.centralwidget)
+        self.gridLayout.setSpacing(12)
         self.gridLayout.setObjectName(u"gridLayout")
+        self.gridLayout.setContentsMargins(12, 12, 12, 12)
         self.horizontalLayout = QHBoxLayout()
+        self.horizontalLayout.setSpacing(12)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.Label_pcSaveLoc = QLabel(self.centralwidget)
         self.Label_pcSaveLoc.setObjectName(u"Label_pcSaveLoc")
@@ -28,19 +31,10 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.LineEdit_pcSaveLoc)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
-
-        self.Button_LoadData = QPushButton(self.centralwidget)
-        self.Button_LoadData.setObjectName(u"Button_LoadData")
-
-        self.gridLayout.addWidget(self.Button_LoadData, 3, 0, 1, 2)
-
-        self.Table = Table_ViewTasks(self.centralwidget)
-        self.Table.setObjectName(u"Table")
-
-        self.gridLayout.addWidget(self.Table, 4, 0, 1, 2)
+        self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 2)
 
         self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setSpacing(12)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.Label_dbName = QLabel(self.centralwidget)
         self.Label_dbName.setObjectName(u"Label_dbName")
@@ -53,92 +47,41 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addWidget(self.LineEdit_dbName)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout_2, 1, 1, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout_2, 0, 2, 1, 2)
 
-        self.StackedWidget_adbExec = QStackedWidget(self.centralwidget)
-        self.StackedWidget_adbExec.setObjectName(u"StackedWidget_adbExec")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.StackedWidget_adbExec.sizePolicy().hasHeightForWidth())
-        self.StackedWidget_adbExec.setSizePolicy(sizePolicy)
-        self.Page_adbExecButton = QWidget()
-        self.Page_adbExecButton.setObjectName(u"Page_adbExecButton")
-        self.gridLayout_2 = QGridLayout(self.Page_adbExecButton)
-        self.gridLayout_2.setSpacing(0)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.Button_adbExec = QPushButton(self.Page_adbExecButton)
-        self.Button_adbExec.setObjectName(u"Button_adbExec")
+        self.Button_LoadData = QPushButton(self.centralwidget)
+        self.Button_LoadData.setObjectName(u"Button_LoadData")
 
-        self.gridLayout_2.addWidget(self.Button_adbExec, 0, 0, 1, 1)
+        self.gridLayout.addWidget(self.Button_LoadData, 1, 0, 1, 1)
 
-        self.StackedWidget_adbExec.addWidget(self.Page_adbExecButton)
-        self.Page_adbExecProgressBar = QWidget()
-        self.Page_adbExecProgressBar.setObjectName(u"Page_adbExecProgressBar")
-        self.gridLayout_3 = QGridLayout(self.Page_adbExecProgressBar)
-        self.gridLayout_3.setSpacing(0)
-        self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.ProgressBar_adbExec = QProgressBar(self.Page_adbExecProgressBar)
+        self.Button_Exec = QPushButton(self.centralwidget)
+        self.Button_Exec.setObjectName(u"Button_Exec")
+
+        self.gridLayout.addWidget(self.Button_Exec, 1, 1, 1, 1)
+
+        self.Button_ViewOutput = QPushButton(self.centralwidget)
+        self.Button_ViewOutput.setObjectName(u"Button_ViewOutput")
+
+        self.gridLayout.addWidget(self.Button_ViewOutput, 1, 2, 1, 1)
+
+        self.Button_ViewResult = QPushButton(self.centralwidget)
+        self.Button_ViewResult.setObjectName(u"Button_ViewResult")
+
+        self.gridLayout.addWidget(self.Button_ViewResult, 1, 3, 1, 1)
+
+        self.Table = Table_ViewTasks(self.centralwidget)
+        self.Table.setObjectName(u"Table")
+
+        self.gridLayout.addWidget(self.Table, 2, 0, 1, 4)
+
+        self.ProgressBar_adbExec = QProgressBar(self.centralwidget)
         self.ProgressBar_adbExec.setObjectName(u"ProgressBar_adbExec")
-        self.ProgressBar_adbExec.setValue(24)
 
-        self.gridLayout_3.addWidget(self.ProgressBar_adbExec, 0, 0, 1, 1)
-
-        self.StackedWidget_adbExec.addWidget(self.Page_adbExecProgressBar)
-
-        self.gridLayout.addWidget(self.StackedWidget_adbExec, 5, 0, 1, 1)
-
-        self.StackedWidget_Analyse = QStackedWidget(self.centralwidget)
-        self.StackedWidget_Analyse.setObjectName(u"StackedWidget_Analyse")
-        sizePolicy.setHeightForWidth(self.StackedWidget_Analyse.sizePolicy().hasHeightForWidth())
-        self.StackedWidget_Analyse.setSizePolicy(sizePolicy)
-        self.Page_AnalyseButton = QWidget()
-        self.Page_AnalyseButton.setObjectName(u"Page_AnalyseButton")
-        self.gridLayout_5 = QGridLayout(self.Page_AnalyseButton)
-        self.gridLayout_5.setSpacing(0)
-        self.gridLayout_5.setObjectName(u"gridLayout_5")
-        self.gridLayout_5.setContentsMargins(0, 0, 0, 0)
-        self.Button_Analyse = QPushButton(self.Page_AnalyseButton)
-        self.Button_Analyse.setObjectName(u"Button_Analyse")
-
-        self.gridLayout_5.addWidget(self.Button_Analyse, 0, 0, 1, 1)
-
-        self.StackedWidget_Analyse.addWidget(self.Page_AnalyseButton)
-        self.Page_AnalyseProgressBar = QWidget()
-        self.Page_AnalyseProgressBar.setObjectName(u"Page_AnalyseProgressBar")
-        self.gridLayout_4 = QGridLayout(self.Page_AnalyseProgressBar)
-        self.gridLayout_4.setSpacing(0)
-        self.gridLayout_4.setObjectName(u"gridLayout_4")
-        self.gridLayout_4.setContentsMargins(0, 0, 0, 0)
-        self.ProgressBar_Analyse = QProgressBar(self.Page_AnalyseProgressBar)
-        self.ProgressBar_Analyse.setObjectName(u"ProgressBar_Analyse")
-        self.ProgressBar_Analyse.setValue(24)
-
-        self.gridLayout_4.addWidget(self.ProgressBar_Analyse, 0, 0, 1, 1)
-
-        self.StackedWidget_Analyse.addWidget(self.Page_AnalyseProgressBar)
-
-        self.gridLayout.addWidget(self.StackedWidget_Analyse, 8, 0, 1, 1)
-
-        self.Button_adbOutput = QPushButton(self.centralwidget)
-        self.Button_adbOutput.setObjectName(u"Button_adbOutput")
-
-        self.gridLayout.addWidget(self.Button_adbOutput, 5, 1, 1, 1)
-
-        self.Button_AnalysationOutput = QPushButton(self.centralwidget)
-        self.Button_AnalysationOutput.setObjectName(u"Button_AnalysationOutput")
-
-        self.gridLayout.addWidget(self.Button_AnalysationOutput, 8, 1, 1, 1)
+        self.gridLayout.addWidget(self.ProgressBar_adbExec, 3, 0, 1, 4)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-
-        self.StackedWidget_adbExec.setCurrentIndex(0)
-        self.StackedWidget_Analyse.setCurrentIndex(0)
-
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
@@ -146,10 +89,9 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.Label_pcSaveLoc.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
-        self.Button_LoadData.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.Label_dbName.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
-        self.Button_adbExec.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
-        self.Button_Analyse.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
-        self.Button_adbOutput.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
-        self.Button_AnalysationOutput.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.Button_LoadData.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.Button_Exec.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.Button_ViewOutput.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.Button_ViewResult.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
     # retranslateUi
