@@ -13,15 +13,21 @@ class Table_ViewTasks(QTableWidget):
     CaseChkTypeCol = 6
     CaseCMDCol = 7
 
+    onButtonClicked = Signal(int)
+
     def __init__(self, parent: QWidget = None):
         super().__init__(parent)
 
         self.setRowCount(0)
         self.setColumnCount(0)
         #self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
 
     def AddRow(self, ValueRow: list[str]):
+        TargetRow = self.currentRow() + 1
+        ColumnCount = self.columnCount()
+        self.insertRow(TargetRow)
+
         RowHeight = 36
         def SetColumnLayout(ColumnLayout):
             ColumnLayout.setContentsMargins(0, 0, 0, 0)
@@ -38,15 +44,16 @@ class Table_ViewTasks(QTableWidget):
             SetColumnLayout(ColumnLayout)
             ColumnLayout.addWidget(Label)
             Layouts += [ColumnLayout]
-            ResizeModes += [QHeaderView.ResizeToContents] if ValueRow.index(Value) != self.CaseCMDCol else [QHeaderView.Stretch]
-            ColumnWidth += [None]
+            ResizeModes += [QHeaderView.ResizeToContents if ValueRow.index(Value) in (self.CaseModuleCol, self.CaseNameCol, self.CaseChkTypeCol) else QHeaderView.Fixed]
+            ColumnWidth += [6*RowHeight if ValueRow.index(Value) == self.CaseCMDCol else 3*RowHeight]
 
-        Label = QLabel()
-        Label.setText("未执行")
-        ColumnLayout_Label = QHBoxLayout()
-        SetColumnLayout(ColumnLayout_Label)
-        ColumnLayout_Label.addWidget(Label)
-        Layouts += [ColumnLayout_Label]
+        Button = QPushButton()
+        Button.setText("未执行")
+        Button.clicked.connect(lambda: self.onButtonClicked.emit(TargetRow))
+        ColumnLayout_Button = QHBoxLayout()
+        SetColumnLayout(ColumnLayout_Button)
+        ColumnLayout_Button.addWidget(Button)
+        Layouts += [ColumnLayout_Button]
         ResizeModes += [QHeaderView.ResizeToContents]
         ColumnWidth += [None]
 
@@ -60,9 +67,6 @@ class Table_ViewTasks(QTableWidget):
         ResizeModes += [QHeaderView.Fixed]
         ColumnWidth += [RowHeight]
 
-        TargetRow = self.currentRow() + 1
-        ColumnCount = self.columnCount()
-        self.insertRow(TargetRow)
         for Column in range(ColumnCount):
             self.setCellWidget(TargetRow, Column, QWidget())
             self.cellWidget(TargetRow, Column).setLayout(Layouts[Column])
@@ -107,21 +111,25 @@ class Table_ViewTasks(QTableWidget):
             if self.cellWidget(row, self.CaseModuleCol).findChild(QLabel).text() == CaseModule and self.cellWidget(row, self.CaseNameCol).findChild(QLabel).text() == CaseName:
                 return row
 
-    def GetCheckedCaseInfos(self, AllowMultiple: bool = False):
+    def GetCaseInfo(self, CaseRow: int):
+        CaseStatusCol = self.columnCount() - 2
+        CaseCMD = self.cellWidget(CaseRow, self.CaseCMDCol).findChild(QLabel).text()
+        CaseName = f"[{self.cellWidget(CaseRow, self.CaseModuleCol).findChild(QLabel).text()}]{self.cellWidget(CaseRow, self.CaseNameCol).findChild(QLabel).text()}"
+        CaseStatus = self.cellWidget(CaseRow, CaseStatusCol).findChild(QPushButton).text()
+        return CaseCMD, CaseName, CaseStatus
+
+    def GetCheckedCaseInfos(self):
         CheckBoxCol = self.columnCount() - 1
         CheckedCaseInfos = []
         for row in range(self.rowCount()):
             if self.cellWidget(row, CheckBoxCol).findChild(QCheckBox).isChecked():
-                CaseCMD = self.cellWidget(row, self.CaseCMDCol).findChild(QLabel).text()
-                CaseName = f"[{self.cellWidget(row, self.CaseModuleCol).findChild(QLabel).text()}]{self.cellWidget(row, self.CaseNameCol).findChild(QLabel).text()}"
+                CaseCMD, CaseName, CaseStatus = self.GetCaseInfo(row)
                 CheckedCaseInfos.append([row, CaseCMD, CaseName])
-        if not AllowMultiple and len(CheckedCaseInfos) > 1:
-            CheckedCaseInfos.append(Exception("Multiple cases selected"))
         return CheckedCaseInfos
 
-    def SetCheckedCaseStatus(self, CaseRow: int, Status: str = ...):
-        CheckedCaseCol = self.columnCount() - 2
-        self.cellWidget(CaseRow, CheckedCaseCol).findChild(QLabel).setText(Status)
+    def SetCaseStatus(self, CaseRow: int, Status: str = ...):
+        CaseStatusCol = self.columnCount() - 2
+        self.cellWidget(CaseRow, CaseStatusCol).findChild(QPushButton).setText(Status)
 
     def GetCaseChkTypes(self, CaseRow: int):
         return self.cellWidget(CaseRow, self.CaseChkTypeCol).findChild(QLabel).text().splitlines()

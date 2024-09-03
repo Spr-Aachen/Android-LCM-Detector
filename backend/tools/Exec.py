@@ -62,6 +62,10 @@ def videoAnalyser(
                 lst_outputH.append(file)
             else:
                 pass
+        UpdateDict(
+            Dict1 = Result,
+            Dict2 = {'lst_outputH': lst_outputH}
+        )
 
     # 检查黑白
     # lst_mapBW = {0:'black',1:'good',2:'white'}
@@ -82,6 +86,10 @@ def videoAnalyser(
                     lst_outputW.append(file)
             else:
                 pass
+        UpdateDict(
+            Dict1 = Result,
+            Dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
+        )
 
     # 分屏+检查黑白
     lst_outputSplitB:List[str] = []
@@ -134,6 +142,10 @@ def videoAnalyser(
                             isBlack = is_mostly_black(Path(dir_splitTmp).joinpath(f'det_r{n}_{i}_upper.jpg').as_posix()) | is_mostly_black(Path(dir_splitTmp).joinpath(f'det_r{n}_{i}_downer.jpg').as_posix())
                             if isBlack:
                                 lst_outputSplitB.append(file)
+        UpdateDict(
+            Dict1 = Result,
+            Dict2 = {'lst_outputSplitB': lst_outputSplitB}
+        )
 
     # [2024-8-15]无bar分屏+检查黑白
     lst_outputNobarSplitB:List[str] = []
@@ -141,6 +153,10 @@ def videoAnalyser(
         for file in lst_file:
             if nobar_split_half_black(Path(output_folder).joinpath(subdir, file).as_posix()):
                 lst_outputNobarSplitB.append(file)
+        UpdateDict(
+            Dict1 = Result,
+            Dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
+        )
 
     # [2024-8-15]桌面来电底色
     lst_outputBlackback:List[str] = []
@@ -148,18 +164,10 @@ def videoAnalyser(
         for file in lst_file:
             if is_mostly_black(Path(output_folder).joinpath(subdir, file).as_posix()):
                 lst_outputBlackback.append(file)
-
-    UpdateDict(
-        Dict1 = Result,
-        Dict2 = {
-            'lst_outputH': lst_outputH,
-            'lst_outputB': lst_outputB,
-            'lst_outputW': lst_outputW,
-            'lst_outputSplitB': lst_outputSplitB,
-            'lst_outputNobarSplitB': lst_outputNobarSplitB,
-            'lst_outputBlackback':lst_outputBlackback
-        }
-    )
+        UpdateDict(
+            Dict1 = Result,
+            Dict2 = {'lst_outputBlackback':lst_outputBlackback}
+        )
 
 
 adbRecord = None
@@ -189,9 +197,11 @@ def RecordAndPull(
             i += 1
             OldName = Path(SaveDir_PC).joinpath(Path(SavePath_AD).name).as_posix()
             NewName = Path(SaveDir_PC).joinpath(f"{i}{Path(SavePath_AD).suffix}").as_posix()
+            if Path(NewName).exists():
+                os.remove(NewName)
             os.rename(OldName, NewName)
-        except:
-            pass
+        except Exception as e:
+            print(f"RecordAndPull error: {e}")
         finally:
             analysingThread = threading.Thread(
                 target = videoAnalyser,

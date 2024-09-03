@@ -176,18 +176,7 @@ class MainWindow(Window_MainWindow):
                 # 加载CaseDict
                 self.loadCaseDict()
 
-    def getCheckedCaseInfo(self):
-        CheckedCaseInfo = self.ui.Table.GetCheckedCaseInfos(AllowMultiple = False)[0]
-        if isinstance(CheckedCaseInfo, Exception):
-            QMessageBox.critical(self, "错误", f"{CheckedCaseInfo}")
-            return
-        CaseRow, CaseCMD, CaseName = CheckedCaseInfo
-        return CaseRow, CaseCMD, CaseName
-
-    def Execute(self):
-        CheckedCaseInfo = self.getCheckedCaseInfo()
-        if CheckedCaseInfo is None:
-            return
+    def startThread(self, CheckedCaseInfo):
         CaseRow, CaseCMD, CaseName = CheckedCaseInfo
         if CaseCMD.strip().lower() in ("nan", ""):
             return
@@ -209,7 +198,7 @@ class MainWindow(Window_MainWindow):
         )
         self.Thread.finished.connect(
             lambda: (
-                self.ui.Table.SetCheckedCaseStatus(CaseRow, Status = "完成"),
+                self.ui.Table.SetCaseStatus(CaseRow, Status = "完成"),
                 self.ui.ProgressBar_adbExec.setRange(0, 100),
                 self.ui.ProgressBar_adbExec.setValue(100),
             )
@@ -223,34 +212,46 @@ class MainWindow(Window_MainWindow):
         self.Thread.start()
         self.ui.ProgressBar_adbExec.setRange(0, 0)
 
+    def Execute(self):
+        CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
+        if len(CheckedCaseInfos) == 0:
+            return
+        self.CheckedCaseIndex = 0
+        self.startThread(CheckedCaseInfos[self.CheckedCaseIndex])
+        def startNextThread():
+            self.CheckedCaseIndex += 1
+            if self.CheckedCaseIndex > len(CheckedCaseInfos):
+                return
+            self.startThread(CheckedCaseInfos[self.CheckedCaseIndex])
+        self.Thread.finished.connect(startNextThread)
+
     def updateResultDict(self, CaseName: str, result: dict):
+        '''
         for key, value in result.copy().items():
             result.pop(key) if len(value) == 0 else None
+        '''
         self.ResultDict[CaseName] = result
 
     def CheckadbOutput(self):
-        CheckedCaseInfo = self.getCheckedCaseInfo()
-        if CheckedCaseInfo is None:
+        CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
+        if len(CheckedCaseInfos) == 0:
             return
-        CaseRow, CaseCMD, CaseName = CheckedCaseInfo
-        SaveDir_PC = self.CaseDict[CaseRow]
-        try:
-            os.startfile(SaveDir_PC)
-        except:
-            QMessageBox.critical(self, "错误", f"无法打开目录: {SaveDir_PC}")
-            return
+        for CheckedCaseInfo in CheckedCaseInfos:
+            CaseRow, CaseCMD, CaseName = CheckedCaseInfo
+            SaveDir_PC = self.CaseDict[CaseRow]
+            try:
+                os.startfile(SaveDir_PC)
+            except:
+                QMessageBox.critical(self, "错误", f"无法打开目录: {SaveDir_PC}")
+                return
 
-    def CheckAnalysationOutput(self):
-        CheckedCaseInfo = self.getCheckedCaseInfo()
-        if CheckedCaseInfo is None:
+    def CheckAnalysationOutput(self, CaseRow):
+        CaseCMD, CaseName, CaseStatus = self.ui.Table.GetCaseInfo(CaseRow)
+        if CaseStatus != "完成":
             return
-        CaseRow, CaseCMD, CaseName = CheckedCaseInfo
         imageDict = self.ResultDict[CaseName]
-        '''
         imageWindow = ImageWindow(imageDict)
         imageWindow.show()
-        '''
-        print(imageDict)
 
     def Main(self):
         self.setWindowTitle("Excel Data to Table")
@@ -271,8 +272,7 @@ class MainWindow(Window_MainWindow):
         self.ui.Button_ViewOutput.setText("查看输出")
         self.ui.Button_ViewOutput.clicked.connect(self.CheckadbOutput)
 
-        self.ui.Button_ViewResult.setText("查看结果")
-        self.ui.Button_ViewResult.clicked.connect(self.CheckAnalysationOutput)
+        self.ui.Table.onButtonClicked.connect(self.CheckAnalysationOutput)
 
         self.show()
 

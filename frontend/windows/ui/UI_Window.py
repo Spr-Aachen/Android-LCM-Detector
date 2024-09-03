@@ -49,26 +49,6 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addLayout(self.horizontalLayout_2, 0, 2, 1, 2)
 
-        self.Button_LoadData = QPushButton(self.centralwidget)
-        self.Button_LoadData.setObjectName(u"Button_LoadData")
-
-        self.gridLayout.addWidget(self.Button_LoadData, 1, 0, 1, 1)
-
-        self.Button_Exec = QPushButton(self.centralwidget)
-        self.Button_Exec.setObjectName(u"Button_Exec")
-
-        self.gridLayout.addWidget(self.Button_Exec, 1, 1, 1, 1)
-
-        self.Button_ViewOutput = QPushButton(self.centralwidget)
-        self.Button_ViewOutput.setObjectName(u"Button_ViewOutput")
-
-        self.gridLayout.addWidget(self.Button_ViewOutput, 1, 2, 1, 1)
-
-        self.Button_ViewResult = QPushButton(self.centralwidget)
-        self.Button_ViewResult.setObjectName(u"Button_ViewResult")
-
-        self.gridLayout.addWidget(self.Button_ViewResult, 1, 3, 1, 1)
-
         self.Table = Table_ViewTasks(self.centralwidget)
         self.Table.setObjectName(u"Table")
 
@@ -78,6 +58,21 @@ class Ui_MainWindow(object):
         self.ProgressBar_adbExec.setObjectName(u"ProgressBar_adbExec")
 
         self.gridLayout.addWidget(self.ProgressBar_adbExec, 3, 0, 1, 4)
+
+        self.Button_ViewOutput = QPushButton(self.centralwidget)
+        self.Button_ViewOutput.setObjectName(u"Button_ViewOutput")
+
+        self.gridLayout.addWidget(self.Button_ViewOutput, 1, 3, 1, 1)
+
+        self.Button_Exec = QPushButton(self.centralwidget)
+        self.Button_Exec.setObjectName(u"Button_Exec")
+
+        self.gridLayout.addWidget(self.Button_Exec, 1, 2, 1, 1)
+
+        self.Button_LoadData = QPushButton(self.centralwidget)
+        self.Button_LoadData.setObjectName(u"Button_LoadData")
+
+        self.gridLayout.addWidget(self.Button_LoadData, 1, 0, 1, 2)
 
         MainWindow.setCentralWidget(self.centralwidget)
 
@@ -90,8 +85,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.Label_pcSaveLoc.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.Label_dbName.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
-        self.Button_LoadData.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
-        self.Button_Exec.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
         self.Button_ViewOutput.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
-        self.Button_ViewResult.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.Button_Exec.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
+        self.Button_LoadData.setText(QCoreApplication.translate("MainWindow", u"PushButton", None))
     # retranslateUi
