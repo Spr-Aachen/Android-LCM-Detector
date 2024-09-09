@@ -24,7 +24,7 @@ class Table_ViewTasks(QTableWidget):
         self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
 
     def AddRow(self, ValueRow: list[str]):
-        TargetRow = self.currentRow() + 1
+        TargetRow = self.rowCount()
         ColumnCount = self.columnCount()
         self.insertRow(TargetRow)
 
@@ -37,7 +37,7 @@ class Table_ViewTasks(QTableWidget):
         ResizeModes = []
         ColumnWidth = []
 
-        for Value in ValueRow:
+        for Value in ValueRow[:-1]:
             Label = QLabel()
             Label.setText(str(Value))
             ColumnLayout = QHBoxLayout()
@@ -48,7 +48,7 @@ class Table_ViewTasks(QTableWidget):
             ColumnWidth += [6*RowHeight if ValueRow.index(Value) == self.CaseCMDCol else 3*RowHeight]
 
         Button = QPushButton()
-        Button.setText("未执行")
+        Button.setText(ValueRow[-1])
         Button.clicked.connect(lambda: self.onButtonClicked.emit(TargetRow))
         ColumnLayout_Button = QHBoxLayout()
         SetColumnLayout(ColumnLayout_Button)
@@ -75,31 +75,35 @@ class Table_ViewTasks(QTableWidget):
         self.setRowHeight(TargetRow, RowHeight) if RowHeight is not None else None
 
     def SetValue(self, Value: Union[DataFrame, dict] = {'ModuleName': [], 'CaseName': [], 'SupportedCalulation': [],}):
+        '''
+        Set value of the table, minus the last 1 (checkbox) column
+        '''
         if isinstance(Value, DataFrame):
-            Headers = Value.columns.tolist() + ["测试状态", "选框"]
+            Headers = Value.columns.tolist() + ["选框"]
             Value = Value.values.tolist()
         if isinstance(Value, dict):
-            Headers = list(Value.keys()) + ["测试状态", "选框"]
+            Headers = list(Value.keys()) + ["选框"]
             Value = [list(x) for x in zip(*Value.values())]
         for ValueRow in Value:
             QApplication.processEvents()
-            self.setColumnCount(len(ValueRow) + 2)
+            self.setColumnCount(len(ValueRow) + 1)
             self.setHorizontalHeaderLabels(Headers)
             self.AddRow(ValueRow)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
     def GetValue(self):
+        '''
+        Get value of the table, minus the last 1 (checkbox) column
+        '''
         ValueDict = {}
-        for colCount in range(self.columnCount() - 2): # Remove last 2 (taskstatus&checkbox) columns
+        for colCount in range(self.columnCount() - 1): # Remove last 1 (checkbox) column
             ValueList = []
             for row in range(self.rowCount()):
-                try:
-                    item = self.cellWidget(row, colCount).findChild(QLabel)
-                except:
-                    pass
-                else:
-                    ValueList.append(item.text()) if item is not None else None
+                item = self.cellWidget(row, colCount).findChild(QLabel)
+                if item is None:
+                    item = self.cellWidget(row, colCount).findChild(QPushButton)
+                ValueList.append(item.text())
             ValueDict[self.horizontalHeaderItem(colCount).text()] = ValueList
         return ValueDict
 
@@ -114,17 +118,17 @@ class Table_ViewTasks(QTableWidget):
     def GetCaseInfo(self, CaseRow: int):
         CaseStatusCol = self.columnCount() - 2
         CaseCMD = self.cellWidget(CaseRow, self.CaseCMDCol).findChild(QLabel).text()
-        CaseName = f"[{self.cellWidget(CaseRow, self.CaseModuleCol).findChild(QLabel).text()}]{self.cellWidget(CaseRow, self.CaseNameCol).findChild(QLabel).text()}"
+        Case = f"[{self.cellWidget(CaseRow, self.CaseModuleCol).findChild(QLabel).text()}]{self.cellWidget(CaseRow, self.CaseNameCol).findChild(QLabel).text()}"
         CaseStatus = self.cellWidget(CaseRow, CaseStatusCol).findChild(QPushButton).text()
-        return CaseCMD, CaseName, CaseStatus
+        return CaseCMD, Case, CaseStatus
 
     def GetCheckedCaseInfos(self):
         CheckBoxCol = self.columnCount() - 1
         CheckedCaseInfos = []
         for row in range(self.rowCount()):
             if self.cellWidget(row, CheckBoxCol).findChild(QCheckBox).isChecked():
-                CaseCMD, CaseName, CaseStatus = self.GetCaseInfo(row)
-                CheckedCaseInfos.append([row, CaseCMD, CaseName])
+                CaseCMD, Case, CaseStatus = self.GetCaseInfo(row)
+                CheckedCaseInfos.append([row, CaseCMD, Case])
         return CheckedCaseInfos
 
     def SetCaseStatus(self, CaseRow: int, Status: str = ...):

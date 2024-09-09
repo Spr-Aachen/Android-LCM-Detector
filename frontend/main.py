@@ -4,11 +4,14 @@ import os
 import sys
 import re
 import json
+import hashlib
 import requests
 import pandas
+import sqlalchemy
+import redis
 from pathlib import Path
 from typing import Optional
-from sqlalchemy import create_engine
+from datetime import datetime
 from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
 from PySide6.QtGui import QTextCursor, QAction, QStandardItem
 from PySide6.QtWidgets import *
@@ -66,7 +69,8 @@ def Request(
 
 
 class Thread(QThread):
-    dictReceived = Signal(dict)
+    dictReceived = Signal(dict, bool)
+
     def __init__(self,
         protocol: str = 'http',
         ip: str = 'localhost',
@@ -96,11 +100,15 @@ class Thread(QThread):
             types = self.types,
             output_folder = self.output_folder
         )
-        self.dictReceived.emit(result)
+        self.dictReceived.emit(result, True if statuscode == 200 else False)
 
 ##############################################################################################################################
 
 class MainWindow(Window_MainWindow):
+    historydbName = "history"
+
+    excel_path = None
+    exceldb_name = None
 
     CaseDict = {}
 
@@ -112,43 +120,96 @@ class MainWindow(Window_MainWindow):
     def updateCaseDict(self, CaseRow, SaveDir_PC):
         self.CaseDict[CaseRow] = SaveDir_PC
 
-    def loadCaseDict(self):
-        SaveRoot_PC = self.ui.LineEdit_pcSaveLoc.text()
-        for DirName in os.listdir(SaveRoot_PC):
-            match = re.match(r'\[.*\]', DirName)
-            if match is None:
-                continue
-            CaseModule, CaseName = match.group(0).strip('[').strip(']'), DirName.replace(match.group(0), "")
-            CaseRow = self.ui.Table.FindRow(CaseModule, CaseName)
-            if CaseRow is None:
-                continue
-            self.updateCaseDict(CaseRow, Path(SaveRoot_PC).joinpath(DirName).as_posix())
-
-    def import_data_to_table(self, df: pandas.DataFrame):
-        # 清空表格
-        while self.ui.Table.rowCount() > 0:
-            self.ui.Table.removeRow(0)
-        # 填充数据
-        self.ui.Table.SetValue(
-            df.to_dict(orient='list')
-        )
-
-    def export_data_to_sqlite(self):
-        # 提取表格数据到列表
-        data = self.ui.Table.GetValue()
-        # 将列表转为DataFrame
-        df = pandas.DataFrame(data)
-        # 创建SQLite数据库引擎
-        dbname = self.ui.LineEdit_dbName.text()
-        engine = create_engine(f'sqlite:///{dbname}.db')
-        # 将DataFrame写入SQLite数据库
+    def export_data_to_exceldb(self, df, new = True):
+        # 创建excel数据库引擎
+        if new:
+            self.exceldb_name = f"DB_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        exceldb_engine = sqlalchemy.create_engine(f'sqlite:///{self.exceldb_name}.db')
+        # 将DataFrame写入excel数据库
         df.to_sql(
-            name = dbname,
-            con = engine,
+            name = self.exceldb_name,
+            con = exceldb_engine,
             if_exists = 'replace',
             index = False
         )
-        QMessageBox.information(self, "完成", "数据已成功写入SQLite数据库。")
+
+    def add_result_to_exceldb(self):
+        df = pandas.DataFrame(self.ui.Table.GetValue())
+        # Add result column if value in 'CaseModule'&'CaseName' collumns is in ResultDict
+        CaseModuleCol = df.iloc[:, 0]
+        CaseNameCol = df.iloc[:, 1]
+        Cases = [f"[{CaseModule}]{CaseName}" for CaseModule, CaseName in zip(CaseModuleCol.values, CaseNameCol.values)] # The casename in resultdict is the combinition of CaseModule and CaseName
+        CaseCol = pandas.Series(Cases)
+        for Case, Result in self.ResultDict.items():
+            CaseIndex = CaseCol[CaseCol == Case].index
+            df.loc[CaseIndex, 'TestResult'] = str(Result)
+            print(f"TEST: Result added to dataframe:\n", df)
+        self.export_data_to_exceldb(df, new = False)
+
+    def load_data_from_exceldb(self):
+        # 与excel数据库建立连接
+        exceldb_engine = sqlalchemy.create_engine(f'sqlite:///{self.exceldb_name}.db')
+        df = pandas.read_sql_query(
+            f"SELECT * FROM {self.exceldb_name}",
+            con = exceldb_engine
+        )
+        df.fillna("", inplace=True)
+        # check if the table has a 'TestResult' column
+        if 'TestResult' in df.columns:
+            # get the existing values of the 'TestResult' column & update results in ResultDict
+            CaseModuleCol = df.iloc[:, 0]
+            CaseNameCol = df.iloc[:, 1]
+            Cases = [f"[{CaseModule}]{CaseName}" for CaseModule, CaseName in zip(CaseModuleCol.values, CaseNameCol.values)] # The casename in resultdict is the combinition of CaseModule and CaseName
+            for Case, Result in zip(Cases, df['TestResult'].values):
+                if Result == "":
+                    continue
+                self.ResultDict[Case] = eval(Result)
+            print("TEST: ResultDict updated:", self.ResultDict)
+            # remove the 'TestResult' column
+            df = df.drop(columns=['TestResult'])
+        return df
+
+    def create_historydb(self):
+        self.historyEngine = sqlalchemy.create_engine(f'sqlite:///{self.historydbName}.db')
+        # 创建table
+        if not sqlalchemy.inspect(self.historyEngine).has_table(self.historydbName):
+            df = pandas.DataFrame({
+                "excel_hash": [],
+                "exceldb_name": []
+            })
+            df.to_sql(
+                name = self.historydbName,
+                con = self.historyEngine,
+                if_exists = 'replace',
+                index = False
+            )
+
+    def to_historydb(self):
+        # 将[表格哈希值,表格数据库名]写入历史记录数据库
+        excel_hash = hashlib.md5(open(self.excel_path, 'rb').read()).hexdigest()
+        df = pandas.DataFrame({
+            "excel_hash": [excel_hash],
+            "exceldb_name": [self.exceldb_name]
+        })
+        df.to_sql(
+            name = self.historydbName,
+            con = self.historyEngine,
+            if_exists = 'append',
+            index = False
+        )
+        # TODO 通过redis建立旁路缓存模式
+
+    def chk_historydb(self):
+        # 检查哈希值在数据库中的对应值
+        excel_hash = hashlib.md5(open(self.excel_path, 'rb').read()).hexdigest()
+        print(f'checking hash {excel_hash} in {self.historydbName}.db')
+        df = pandas.read_sql_query(
+            f"SELECT * FROM {self.historydbName} WHERE excel_hash = '{excel_hash}'",
+            con = self.historyEngine
+        )
+        exceldb_name = df.iloc[0]["exceldb_name"] if len(df) > 0 else None
+        print(f'exceldb name found: {exceldb_name}')
+        return exceldb_name
 
     def open_excel_file(self):
         # 弹出文件选择对话框
@@ -163,25 +224,48 @@ class MainWindow(Window_MainWindow):
             text = "场景测试用例"
         )
         if file_path:
+            self.excel_path = file_path
             try:
-                # 使用pandas读取Excel文件
-                df = pandas.read_excel(file_path, sheet_name = sheet_name) if ok and len(sheet_name) > 0 else pandas.read_excel(file_path)
-                df.fillna("", inplace=True)
+                # 与历史记录数据库建立连接
+                self.create_historydb()
+                # 检查哈希值是否存在于数据库中，不在则将[表格哈希值,表格数据库名]写入历史记录数据库
+                self.exceldb_name = self.chk_historydb()
+                if self.exceldb_name is None:
+                    # 使用pandas读取Excel文件
+                    df = pandas.read_excel(file_path, sheet_name = sheet_name) if ok and len(sheet_name) > 0 else pandas.read_excel(file_path)
+                    df.fillna("", inplace=True)
+                    # 在表格末端添加一列，用于存储测试状态
+                    df['测试状态'] = "未测试"
+                    # 将DataFrame写入excel数据库
+                    self.export_data_to_exceldb(df, new=True)
+                    # 将[表格哈希值,表格数据库名]写入历史记录数据库
+                    self.to_historydb()
+                else:
+                    df = self.load_data_from_exceldb()
             except Exception as e:
-                print(f"读取Excel文件时出错: {e}")
+                print(f"出错: {e}")
             else:
-                # 导入Excel数据到表格
-                self.import_data_to_table(df)
-                self.export_data_to_sqlite()
-                # 加载CaseDict
-                self.loadCaseDict()
+                # 清空表格
+                while self.ui.Table.rowCount() > 0:
+                    self.ui.Table.removeRow(0)
+                # 填充数据
+                self.ui.Table.SetValue(
+                    df.to_dict(orient='list')
+                )
+
+    def updateResultDict(self, Case: str, result: dict):
+        '''
+        for key, value in result.copy().items():
+            result.pop(key) if len(value) == 0 else None
+        '''
+        self.ResultDict[Case] = result
 
     def startThread(self, CheckedCaseInfo):
-        CaseRow, CaseCMD, CaseName = CheckedCaseInfo
+        CaseRow, CaseCMD, Case = CheckedCaseInfo
         if CaseCMD.strip().lower() in ("nan", ""):
             return
         SaveRoot_PC = self.ui.LineEdit_pcSaveLoc.text()
-        SaveDir_PC = Path(SaveRoot_PC).joinpath(CaseName).as_posix()
+        SaveDir_PC = Path(SaveRoot_PC).joinpath(Case).as_posix()
         ChkTypes = self.ui.Table.GetCaseChkTypes(CaseRow)
         output_folder = SaveDir_PC
         # Update CaseDict
@@ -196,17 +280,13 @@ class MainWindow(Window_MainWindow):
             ChkTypes,
             output_folder,
         )
-        self.Thread.finished.connect(
-            lambda: (
-                self.ui.Table.SetCaseStatus(CaseRow, Status = "完成"),
+        self.Thread.dictReceived.connect(
+            lambda dict, isSucceeded: (
+                self.updateResultDict(Case, dict),
+                self.ui.Table.SetCaseStatus(CaseRow, Status = "完成" if isSucceeded else "失败"),
+                self.add_result_to_exceldb(),
                 self.ui.ProgressBar_adbExec.setRange(0, 100),
                 self.ui.ProgressBar_adbExec.setValue(100),
-            )
-        )
-        self.Thread.dictReceived.connect(
-            lambda dict: (
-                self.updateResultDict(CaseName, dict),
-                self.CheckAnalysationOutput()
             )
         )
         self.Thread.start()
@@ -220,24 +300,17 @@ class MainWindow(Window_MainWindow):
         self.startThread(CheckedCaseInfos[self.CheckedCaseIndex])
         def startNextThread():
             self.CheckedCaseIndex += 1
-            if self.CheckedCaseIndex > len(CheckedCaseInfos):
+            if self.CheckedCaseIndex > len(CheckedCaseInfos)-1:
                 return
             self.startThread(CheckedCaseInfos[self.CheckedCaseIndex])
         self.Thread.finished.connect(startNextThread)
-
-    def updateResultDict(self, CaseName: str, result: dict):
-        '''
-        for key, value in result.copy().items():
-            result.pop(key) if len(value) == 0 else None
-        '''
-        self.ResultDict[CaseName] = result
 
     def CheckadbOutput(self):
         CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
         if len(CheckedCaseInfos) == 0:
             return
         for CheckedCaseInfo in CheckedCaseInfos:
-            CaseRow, CaseCMD, CaseName = CheckedCaseInfo
+            CaseRow, CaseCMD, Case = CheckedCaseInfo
             SaveDir_PC = self.CaseDict[CaseRow]
             try:
                 os.startfile(SaveDir_PC)
@@ -246,10 +319,10 @@ class MainWindow(Window_MainWindow):
                 return
 
     def CheckAnalysationOutput(self, CaseRow):
-        CaseCMD, CaseName, CaseStatus = self.ui.Table.GetCaseInfo(CaseRow)
+        CaseCMD, Case, CaseStatus = self.ui.Table.GetCaseInfo(CaseRow)
         if CaseStatus != "完成":
             return
-        imageDict = self.ResultDict[CaseName]
+        imageDict = self.ResultDict[Case]
         imageWindow = ImageWindow(imageDict)
         imageWindow.show()
 
@@ -258,9 +331,6 @@ class MainWindow(Window_MainWindow):
 
         self.ui.Label_pcSaveLoc.setText('输出位置')
         self.ui.LineEdit_pcSaveLoc.setText(Path(CurrentDir).parent.joinpath('vids').as_posix())
-
-        self.ui.Label_dbName.setText('数据库名')
-        self.ui.LineEdit_dbName.setText("db_1")
 
         self.ui.Button_LoadData.setText("打开Excel文件")
         self.ui.Button_LoadData.clicked.connect(self.open_excel_file)
