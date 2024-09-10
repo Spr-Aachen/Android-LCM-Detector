@@ -44,7 +44,7 @@ class Table_ViewTasks(QTableWidget):
             SetColumnLayout(ColumnLayout)
             ColumnLayout.addWidget(Label)
             Layouts += [ColumnLayout]
-            ResizeModes += [QHeaderView.ResizeToContents if ValueRow.index(Value) in (self.CaseModuleCol, self.CaseNameCol, self.CaseChkTypeCol) else QHeaderView.Fixed]
+            ResizeModes += [QHeaderView.ResizeToContents if ValueRow.index(Value) in (self.CaseModuleCol, self.CaseNameCol, self.CaseChkTypeCol) else QHeaderView.Stretch]
             ColumnWidth += [6*RowHeight if ValueRow.index(Value) == self.CaseCMDCol else 3*RowHeight]
 
         Button = QPushButton()
@@ -89,7 +89,7 @@ class Table_ViewTasks(QTableWidget):
             self.setColumnCount(len(ValueRow) + 1)
             self.setHorizontalHeaderLabels(Headers)
             self.AddRow(ValueRow)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        #self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.verticalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
     def GetValue(self):

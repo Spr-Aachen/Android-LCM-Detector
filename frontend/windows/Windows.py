@@ -64,6 +64,8 @@ class ImageWindow(QWidget):
 
     def update_image(self, name):
         current_index = self.current_indices[name]
+        if len(self.image_paths[name]) == 0:
+            return
         pixmap = QPixmap(self.image_paths[name][current_index])
 
         tab_components = self.tabs[name]
