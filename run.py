@@ -12,33 +12,35 @@ from subprocess import Popen
 CurrentDir = sys.path[0]
 
 
+IsCompiled = False
+
+
 def run(
     ModelDir: str,
 ):
-    # 后台启动
-    BackendDir = Path(f'{CurrentDir}{os.sep}backend').as_posix()
-    backendFileStem = Path(f'{BackendDir}{os.sep}main').as_posix()
-    if Path(f'{backendFileStem}.py').exists():
+    if not IsCompiled:
+        BackendDir = Path(f'{CurrentDir}{os.sep}backend').as_posix()
+        backendFile = Path(f'{BackendDir}{os.sep}main.py').as_posix()
         Popen(
-            f'python "{backendFileStem}.py" --modeldir "{ModelDir}"',
+            f'python "{backendFile}" --modeldir "{ModelDir}"',
             shell = True
         )
-    if Path(f'{backendFileStem}.exe').exists():
+        FrontendDir = Path(f'{CurrentDir}{os.sep}frontend').as_posix()
+        FrontendFile = Path(f'{FrontendDir}{os.sep}main.py').as_posix()
         Popen(
-            f'"{backendFileStem}.exe"'
-        )
-
-    # 前台启动
-    FrontendDir = Path(f'{CurrentDir}{os.sep}frontend').as_posix()
-    FrontendFileStem = Path(f'{FrontendDir}{os.sep}main').as_posix()
-    if Path(f'{FrontendFileStem}.py').exists():
-        Popen(
-            f'python "{FrontendFileStem}.py"',
+            f'python "{FrontendFile}"',
             shell = True
         )
-    if Path(f'{FrontendFileStem}.exe').exists():
+    else:
+        BackendDir = Path(f'{CurrentDir}{os.sep}backend').as_posix()
+        backendFile = Path(f'{BackendDir}{os.sep}main.exe').as_posix()
         Popen(
-            f'"{FrontendFileStem}.exe"'
+            f'"{backendFile}"'
+        )
+        FrontendDir = Path(f'{CurrentDir}{os.sep}frontend').as_posix()
+        FrontendFile = Path(f'{FrontendDir}{os.sep}main.exe').as_posix()
+        Popen(
+            f'"{FrontendFile}"'
         )
 
 ##############################################################################################################################

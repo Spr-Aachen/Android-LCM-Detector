@@ -102,6 +102,48 @@ class Thread(QThread):
         )
         self.dictReceived.emit(result, True if statuscode == 200 else False)
 
+
+def stopTask(
+    protocol: str = 'http',
+    ip: str = 'localhost',
+    port: Optional[int] = None
+):
+    with requests.post(
+        url = f"{protocol}://{ip}:{port}/stop"
+    ) as response:
+        return json.loads(response.text) if response.status_code == 200 else "任务未能停止", response.status_code
+
+
+class Thread_Stop(QThread):
+    def __init__(self,
+        protocol: str = 'http',
+        ip: str = 'localhost',
+        port: int = 8080,
+    ):
+        super().__init__()
+
+        self.protocol = protocol
+        self.ip = ip
+        self.port = port
+
+    def run(self):
+        result, statuscode = stopTask(
+            protocol = self.protocol,
+            ip = self.ip,
+            port = self.port,
+        )
+
+
+def exitService(
+    protocol: str = 'http',
+    ip: str = 'localhost',
+    port: Optional[int] = None
+):
+    with requests.post(
+        url = f"{protocol}://{ip}:{port}/actuator/shutdown"
+    ) as response:
+        return json.loads(response.text) if response.status_code == 200 else "服务未能关闭", response.status_code
+
 ##############################################################################################################################
 
 class MainWindow(Window_MainWindow):
@@ -113,6 +155,8 @@ class MainWindow(Window_MainWindow):
     CaseDict = {}
 
     ResultDict = {}
+
+    Thread = None
 
     def __init__(self):
         super().__init__()
@@ -271,6 +315,8 @@ class MainWindow(Window_MainWindow):
         # Update CaseDict
         self.updateCaseDict(CaseRow, SaveDir_PC)
         # Start thread
+        if self.Thread is not None and self.Thread.isRunning():
+            self.Thread.terminate()
         self.Thread = Thread(
             'http',
             'localhost',
@@ -285,12 +331,14 @@ class MainWindow(Window_MainWindow):
                 self.updateResultDict(Case, dict),
                 self.ui.Table.SetCaseStatus(CaseRow, Status = "完成" if isSucceeded else "失败"),
                 self.add_result_to_exceldb(),
-                self.ui.ProgressBar_adbExec.setRange(0, 100),
-                self.ui.ProgressBar_adbExec.setValue(100),
+                self.ui.ProgressBar_Exec.setRange(0, 100),
+                self.ui.ProgressBar_Exec.setValue(100),
+                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
             )
         )
         self.Thread.start()
-        self.ui.ProgressBar_adbExec.setRange(0, 0)
+        self.ui.ProgressBar_Exec.setRange(0, 0)
+        self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Stop)
 
     def Execute(self):
         CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
@@ -304,6 +352,24 @@ class MainWindow(Window_MainWindow):
                 return
             self.startThread(CheckedCaseInfos[self.CheckedCaseIndex])
         self.Thread.finished.connect(startNextThread)
+
+    def StopTask(self):
+        if self.Thread is not None and self.Thread.isRunning():
+            self.Thread.terminate()
+            self.Thread.wait()
+        self.Thread = Thread_Stop(
+            'http',
+            'localhost',
+            8080,
+        )
+        self.Thread.finished.connect(
+            lambda: (
+                self.ui.ProgressBar_Exec.setRange(0, 100),
+                self.ui.ProgressBar_Exec.setValue(0),
+                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
+            )
+        )
+        self.Thread.start()
 
     def CheckadbOutput(self):
         CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
@@ -326,6 +392,14 @@ class MainWindow(Window_MainWindow):
         imageWindow = ImageWindow(imageDict)
         imageWindow.show()
 
+    def closeEvent(self, event):
+        exitService(
+            protocol = 'http',
+            ip = 'localhost',
+            port = 8080,
+        )
+        event.accept()
+
     def Main(self):
         self.setWindowTitle("Excel Data to Table")
 
@@ -335,11 +409,13 @@ class MainWindow(Window_MainWindow):
         self.ui.Button_LoadData.setText("打开Excel文件")
         self.ui.Button_LoadData.clicked.connect(self.open_excel_file)
 
-        self.ui.Button_Exec.setText("执行测试")
+        self.ui.Button_Exec.setText("执行测试用例")
         self.ui.Button_Exec.clicked.connect(self.Execute)
-        self.ui.ProgressBar_adbExec.setTextVisible(False)
+        self.ui.Button_Stop.setText("停止")
+        self.ui.Button_Stop.clicked.connect(self.StopTask)
+        self.ui.ProgressBar_Exec.setTextVisible(False)
 
-        self.ui.Button_ViewOutput.setText("查看输出")
+        #self.ui.Button_ViewOutput.setText("查看输出")
         self.ui.Button_ViewOutput.clicked.connect(self.CheckadbOutput)
 
         self.ui.Table.onButtonClicked.connect(self.CheckAnalysationOutput)

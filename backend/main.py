@@ -1,18 +1,10 @@
-import os
-import io
-import sys
-import json
 import uvicorn
 import argparse
-from typing import List, Union, Optional
+import asyncio
 from fastapi import FastAPI, Request, Response, status, Depends, File, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from tools.Exec import *
+from tools.Exec import Exec, StopAllEvent, isalleventset
 
 ##############################################################################################################################
 
@@ -38,6 +30,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+
 @app.post('/execute')
 async def execute(request: Request):
     data = await request.json()
@@ -49,7 +42,7 @@ async def execute(request: Request):
     bChkNobarSplit_then_BW = data.get('chkNobarSplit_then_BW')
     bChkBlackback = data.get('chkBlackback')
     output_folder = data.get('output_folder')
-    result = Exec(
+    result = await asyncio.to_thread(Exec,
         CaseCMD,
         SaveDir_PC,
         bChkH,
@@ -62,6 +55,33 @@ async def execute(request: Request):
     )
     return {'message': result}
 
+
+@app.post('/stop')
+async def stop():
+    global StopAllEvent
+    StopAllEvent.set()
+    return {'message': "Stopping..."}
+
+
+@app.post('/actuator/shutdown')
+async def shutdown():
+    global StopAllEvent
+    StopAllEvent.set()
+    uvicorn.Server(uvicorn.Config(app)).should_exit = True
+    return {'message': "Shutting down..."}
+
+'''
+@app.post('/terminate')
+async def terminate():
+    Process = psutil.Process(os.getpid())
+    ProcessList =  Process.children(recursive = True) + [Process]
+    for Process in ProcessList:
+        try:
+            os.kill(Process.pid, signal.SIGTERM)
+        except:
+            pass
+    return {'message': "Terminating..."}
+'''
 ##############################################################################################################################
 
 if __name__ == '__main__':
