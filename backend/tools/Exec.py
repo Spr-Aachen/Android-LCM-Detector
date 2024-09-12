@@ -31,7 +31,9 @@ def UpdateDict(Dict1, Dict2):
 Result = {}
 def save_images(
     cap: cv2.VideoCapture,
-    ModelDir: str,
+    model_cls: str,
+    model_clsBw: str,
+    model_detect_splitScreen: str,
     bChkH: bool,
     bChkBW: bool,
     bChkSplit_then_BW: bool,
@@ -41,10 +43,6 @@ def save_images(
     stopEvent: threading.Event
 ):
     global Result
-
-    model_cls = YOLO(Path(ModelDir).joinpath('models_cls_videoHua.pt').as_posix())
-    model_clsBw = YOLO(Path(ModelDir).joinpath('modelm-cls_screen_w_rec_basic.pt').as_posix())
-    model_detect_splitScreen = YOLO(Path(ModelDir).joinpath("model_splitScreen.pt").as_posix()) #[2024-8-6]model_splitScreen.pt
 
     # Initialize frame counter
     frame_count = 0
@@ -172,6 +170,7 @@ def videoAnalyser(
     bChkBlackback: bool,
     output_folder: str,
     ModelDir: str,
+    toOnnx: bool,
     stopEvent: threading.Event
 ):
     global Result
@@ -186,12 +185,29 @@ def videoAnalyser(
     # 加载视频流
     cap = cv2.VideoCapture(0 if video_path is None else video_path)
 
+    # Setup the YOLO models' paths
+    model_cls_path = Path(ModelDir).joinpath('models_cls_videoHua.pt').as_posix()
+    model_clsBw_path = Path(ModelDir).joinpath('modelm-cls_screen_w_rec_basic.pt').as_posix()
+    model_detect_splitScreen_path = Path(ModelDir).joinpath("model_splitScreen.pt").as_posix()
+    # Load the YOLO models
+    model_cls = YOLO(model_cls_path)
+    if toOnnx and not Path(f"{Path(model_cls_path).stem}.onnx").exists() and not stopEvent.is_set():
+        model_cls = YOLO(model_cls.export(format="onnx", dynamic = True), task='detect')
+    model_clsBw = YOLO(model_clsBw_path)
+    if toOnnx and not Path(f"{Path(model_clsBw_path).stem}.onnx").exists() and not stopEvent.is_set():
+        model_clsBw = YOLO(model_clsBw.export(format="onnx", dynamic = True), task='detect')
+    model_detect_splitScreen = YOLO(model_detect_splitScreen_path) #[2024-8-6]model_splitScreen.pt
+    if toOnnx and not Path(f"{Path(model_detect_splitScreen_path).stem}.onnx").exists() and not stopEvent.is_set():
+        model_detect_splitScreen = YOLO(model_detect_splitScreen.export(format="onnx", dynamic = True), task='detect')
+
     # 启动图像处理线程
     thread = threading.Thread(
         target=save_images,
         args=(
             cap,
-            ModelDir,
+            model_cls,
+            model_clsBw,
+            model_detect_splitScreen,
             bChkH,
             bChkBW,
             bChkSplit_then_BW,
@@ -222,6 +238,7 @@ def RecordAndPull(
     bChkBlackback,
     output_folder,
     ModelDir,
+    toOnnx,
     RecPeriod: int = 180,
 ):
     global adbRecord
@@ -249,7 +266,7 @@ def RecordAndPull(
                 continue
             analysingThread = threading.Thread(
                 target = videoAnalyser,
-                args = (NewName, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, StopAllEvent)
+                args = (NewName, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, toOnnx, StopAllEvent)
             )
             analysingThreads.append(analysingThread)
             analysingThread.start()
@@ -272,6 +289,7 @@ def Exec(
     bChkBlackback,
     output_folder,
     ModelDir,
+    toOnnx: bool = False,
     RecPeriod: int = 180,
 ):
     global adbRecord
@@ -290,7 +308,7 @@ def Exec(
     # Start the screen recording thread
     recordingThread = threading.Thread(
         target = RecordAndPull,
-        args = (SavePath_AD, SaveDir_PC, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, RecPeriod)
+        args = (SavePath_AD, SaveDir_PC, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, toOnnx, RecPeriod)
     )
     recordingThread.start()
 

@@ -2,13 +2,15 @@ import os
 import cv2
 import random
 import numpy as np
+from pathlib import Path
 
 ##############################################################################################################################
 
 def save_image(frame_count, frame, output_folder, subdir):
     formatted_n = f"{frame_count:04}"
-    frame_filename = os.path.join(output_folder, subdir, f"{formatted_n}.webp")
-    cv2.imwrite(frame_filename, frame, [cv2.IMWRITE_WEBP_QUALITY, 90])
+    frame_filename = Path(output_folder).joinpath(subdir, f"{formatted_n}.webp")
+    frame_filename.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imencode('.webp', frame, [cv2.IMWRITE_WEBP_QUALITY, 90])[1].tofile(frame_filename)
     return frame_filename
 
 

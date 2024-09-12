@@ -142,7 +142,7 @@ def exitService(
     with requests.post(
         url = f"{protocol}://{ip}:{port}/actuator/shutdown"
     ) as response:
-        return json.loads(response.text) if response.status_code == 200 else "服务未能关闭", response.status_code
+        return
 
 ##############################################################################################################################
 
@@ -337,8 +337,30 @@ class MainWindow(Window_MainWindow):
             )
         )
         self.Thread.start()
+        self.ui.Table.SetCaseStatus(CaseRow, Status = "执行中")
         self.ui.ProgressBar_Exec.setRange(0, 0)
         self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Stop)
+
+    def stopThread(self, CheckedCaseInfo):
+        CaseRow, CaseCMD, Case = CheckedCaseInfo
+        if self.ui.Table.GetCaseInfo(CaseRow)[2] != "执行中":
+            return
+        if self.Thread is not None and self.Thread.isRunning():
+            self.Thread.terminate()
+        self.Thread = Thread_Stop(
+            'http',
+            'localhost',
+            8080,
+        )
+        self.Thread.finished.connect(
+            lambda: (
+                self.ui.Table.SetCaseStatus(CaseRow, Status = "已终止"),
+                self.ui.ProgressBar_Exec.setRange(0, 100),
+                self.ui.ProgressBar_Exec.setValue(0),
+                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
+            )
+        )
+        self.Thread.start()
 
     def Execute(self):
         CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
@@ -354,22 +376,9 @@ class MainWindow(Window_MainWindow):
         self.Thread.finished.connect(startNextThread)
 
     def StopTask(self):
-        if self.Thread is not None and self.Thread.isRunning():
-            self.Thread.terminate()
-            self.Thread.wait()
-        self.Thread = Thread_Stop(
-            'http',
-            'localhost',
-            8080,
-        )
-        self.Thread.finished.connect(
-            lambda: (
-                self.ui.ProgressBar_Exec.setRange(0, 100),
-                self.ui.ProgressBar_Exec.setValue(0),
-                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
-            )
-        )
-        self.Thread.start()
+        CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()
+        for CheckedCaseInfo in CheckedCaseInfos:
+            self.stopThread(CheckedCaseInfo)
 
     def CheckadbOutput(self):
         CheckedCaseInfos = self.ui.Table.GetCheckedCaseInfos()

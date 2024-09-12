@@ -1,10 +1,14 @@
+import os
+import sys
+import psutil
+import signal
 import uvicorn
 import argparse
 import asyncio
 from fastapi import FastAPI, Request, Response, status, Depends, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from tools.Exec import Exec, StopAllEvent, isalleventset
+from tools.Exec import Exec, StopAllEvent
 
 ##############################################################################################################################
 
@@ -68,20 +72,15 @@ async def shutdown():
     global StopAllEvent
     StopAllEvent.set()
     uvicorn.Server(uvicorn.Config(app)).should_exit = True
-    return {'message': "Shutting down..."}
-
-'''
-@app.post('/terminate')
-async def terminate():
     Process = psutil.Process(os.getpid())
-    ProcessList =  Process.children(recursive = True) + [Process]
+    ProcessList =  Process.children(recursive = True)
     for Process in ProcessList:
         try:
             os.kill(Process.pid, signal.SIGTERM)
         except:
             pass
-    return {'message': "Terminating..."}
-'''
+    sys.exit()
+
 ##############################################################################################################################
 
 if __name__ == '__main__':
