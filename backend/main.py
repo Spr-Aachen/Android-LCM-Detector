@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--modeldir", help = "models目录", type = str, default = './models')
 args = parser.parse_args()
 
-ModelDir = args.modeldir
+modelDir = args.modeldir
 
 ##############################################################################################################################
 
@@ -38,8 +38,8 @@ app.add_middleware(
 @app.post('/execute')
 async def execute(request: Request):
     data = await request.json()
-    CaseCMD = data.get('CaseCMD')
-    SaveDir_PC = data.get('SaveDir_PC')
+    caseCMD = data.get('caseCMD')
+    saveDir_PC = data.get('saveDir_PC')
     bChkH = data.get('chkHua')
     bChkBW = data.get('chkB_ok_W')
     bChkSplit_then_BW = data.get('chkSplit_then_BokW')
@@ -47,15 +47,15 @@ async def execute(request: Request):
     bChkBlackback = data.get('chkBlackback')
     output_folder = data.get('output_folder')
     result = await asyncio.to_thread(Exec,
-        CaseCMD,
-        SaveDir_PC,
+        caseCMD,
+        saveDir_PC,
         bChkH,
         bChkBW,
         bChkSplit_then_BW,
         bChkNobarSplit_then_BW,
         bChkBlackback,
         output_folder,
-        ModelDir,
+        modelDir,
     )
     return {'message': result}
 
@@ -73,13 +73,12 @@ async def shutdown():
     StopAllEvent.set()
     uvicorn.Server(uvicorn.Config(app)).should_exit = True
     Process = psutil.Process(os.getpid())
-    ProcessList =  Process.children(recursive = True)
+    ProcessList =  Process.children(recursive = True) + [Process]
     for Process in ProcessList:
         try:
             os.kill(Process.pid, signal.SIGTERM)
         except:
             pass
-    sys.exit()
 
 ##############################################################################################################################
 

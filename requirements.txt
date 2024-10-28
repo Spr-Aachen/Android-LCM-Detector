@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+numpy
+opencv-python
+ultralytics
+colorama
+
+PySide6
+fastexcel
+polars
+sqlalchemy

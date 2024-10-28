@@ -17,7 +17,107 @@ class Ui_MainWindow(object):
 "}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.gridLayout = QGridLayout(self.centralwidget)
+        self.gridLayout_5 = QGridLayout(self.centralwidget)
+        self.gridLayout_5.setSpacing(0)
+        self.gridLayout_5.setObjectName(u"gridLayout_5")
+        self.gridLayout_5.setContentsMargins(0, 0, 0, 0)
+        self.titleBar = QFrame(self.centralwidget)
+        self.titleBar.setObjectName(u"titleBar")
+        self.titleBar.setMinimumSize(QSize(0, 30))
+        self.titleBar.setMaximumSize(QSize(16777215, 30))
+        self.horizontalLayout_30 = QHBoxLayout(self.titleBar)
+        self.horizontalLayout_30.setSpacing(0)
+        self.horizontalLayout_30.setObjectName(u"horizontalLayout_30")
+        self.horizontalLayout_30.setContentsMargins(0, 0, 0, 0)
+        self.Frame_Top = QFrame(self.titleBar)
+        self.Frame_Top.setObjectName(u"Frame_Top")
+        self.horizontalLayout_11 = QHBoxLayout(self.Frame_Top)
+        self.horizontalLayout_11.setSpacing(21)
+        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
+        self.horizontalLayout_11.setContentsMargins(0, 0, 0, 0)
+        self.HorizontalSpacer_Right_Top = QSpacerItem(587, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_11.addItem(self.HorizontalSpacer_Right_Top)
+
+        self.CheckBox_SwitchTheme = QCheckBox(self.Frame_Top)
+        self.CheckBox_SwitchTheme.setObjectName(u"CheckBox_SwitchTheme")
+        self.CheckBox_SwitchTheme.setStyleSheet(u"QCheckBox {\n"
+"	font-size: 12px;\n"
+"	spacing: 12.3px;\n"
+"	background-color: transparent;\n"
+"	padding: 0px;\n"
+"	border-width: 0px;\n"
+"	border-radius: 6px;\n"
+"	border-style: solid;\n"
+"}\n"
+"QCheckBox:hover {\n"
+"}\n"
+"\n"
+"QCheckBox::indicator {\n"
+"	width: 16.8px;\n"
+"	height: 16.8px;\n"
+"    background-color: transparent;\n"
+"	padding: 0px;\n"
+"	border-width: 0px;\n"
+"	border-radius: 6px;\n"
+"	border-style: solid;\n"
+"}\n"
+"QCheckBox::indicator:hover {\n"
+"	background-color: rgba(255, 255, 255, 24);\n"
+"}\n"
+"QCheckBox::indicator:unchecked {\n"
+"	border-image: url(:/CheckBox_Icon/images/icons/Moon.png);\n"
+"}\n"
+"QCheckBox::indicator:checked {\n"
+"	border-image: url(:/CheckBox_Icon/images/icons/Sun.png);\n"
+"}")
+
+        self.horizontalLayout_11.addWidget(self.CheckBox_SwitchTheme)
+
+        self.Frame_Top_Control_Window = QFrame(self.Frame_Top)
+        self.Frame_Top_Control_Window.setObjectName(u"Frame_Top_Control_Window")
+        self.Frame_Top_Control_Window.setMinimumSize(QSize(144, 0))
+        self.Frame_Top_Control_Window.setMaximumSize(QSize(144, 16777215))
+        self.horizontalLayout_12 = QHBoxLayout(self.Frame_Top_Control_Window)
+        self.horizontalLayout_12.setSpacing(0)
+        self.horizontalLayout_12.setObjectName(u"horizontalLayout_12")
+        self.horizontalLayout_12.setContentsMargins(0, 0, 0, 0)
+        self.Button_Minimize_Window = ButtonBase(self.Frame_Top_Control_Window)
+        self.Button_Minimize_Window.setObjectName(u"Button_Minimize_Window")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.Button_Minimize_Window.sizePolicy().hasHeightForWidth())
+        self.Button_Minimize_Window.setSizePolicy(sizePolicy)
+
+        self.horizontalLayout_12.addWidget(self.Button_Minimize_Window)
+
+        self.Button_Maximize_Window = ButtonBase(self.Frame_Top_Control_Window)
+        self.Button_Maximize_Window.setObjectName(u"Button_Maximize_Window")
+        sizePolicy.setHeightForWidth(self.Button_Maximize_Window.sizePolicy().hasHeightForWidth())
+        self.Button_Maximize_Window.setSizePolicy(sizePolicy)
+
+        self.horizontalLayout_12.addWidget(self.Button_Maximize_Window)
+
+        self.Button_Close_Window = ButtonBase(self.Frame_Top_Control_Window)
+        self.Button_Close_Window.setObjectName(u"Button_Close_Window")
+        sizePolicy.setHeightForWidth(self.Button_Close_Window.sizePolicy().hasHeightForWidth())
+        self.Button_Close_Window.setSizePolicy(sizePolicy)
+
+        self.horizontalLayout_12.addWidget(self.Button_Close_Window)
+
+
+        self.horizontalLayout_11.addWidget(self.Frame_Top_Control_Window)
+
+
+        self.horizontalLayout_30.addWidget(self.Frame_Top)
+
+
+        self.gridLayout_5.addWidget(self.titleBar, 0, 0, 1, 1)
+
+        self.content = QWidget(self.centralwidget)
+        self.content.setObjectName(u"content")
+        self.gridLayout = QGridLayout(self.content)
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setHorizontalSpacing(21)
         self.gridLayout.setVerticalSpacing(12)
@@ -25,41 +125,27 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setSpacing(21)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.Button_LoadData = QPushButton(self.centralwidget)
+        self.Button_LoadData = ButtonBase(self.content)
         self.Button_LoadData.setObjectName(u"Button_LoadData")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.Button_LoadData.sizePolicy().hasHeightForWidth())
-        self.Button_LoadData.setSizePolicy(sizePolicy)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.Button_LoadData.sizePolicy().hasHeightForWidth())
+        self.Button_LoadData.setSizePolicy(sizePolicy1)
         self.Button_LoadData.setMaximumSize(QSize(210, 30))
-        self.Button_LoadData.setStyleSheet(u"QPushButton {\n"
-"    color: black;\n"
-"    background: rgba(255, 255, 255, 150);\n"
-"    border: 1px solid rgba(0, 0, 0, 12);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 48);\n"
-"    border-radius: 3px;\n"
-"    padding: 5px 12px 6px 12px;\n"
-"    outline: none;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background: rgba(246, 246, 246, 0.5);\n"
-"}\n"
-"\n"
-"QPushButton:pressed, QPushButton:checked {\n"
-"    color: rgba(0, 0, 0, 123);\n"
-"    background: rgba(246, 246, 246, 75);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 15);\n"
-"}")
         icon = QIcon()
         icon.addFile(u":/Button_Icon/images/icons/Plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.Button_LoadData.setIcon(icon)
 
         self.horizontalLayout_2.addWidget(self.Button_LoadData)
 
-        self.StackedWidget_ExecAndStop = QStackedWidget(self.centralwidget)
+        self.StackedWidget_ExecAndStop = QStackedWidget(self.content)
         self.StackedWidget_ExecAndStop.setObjectName(u"StackedWidget_ExecAndStop")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.StackedWidget_ExecAndStop.sizePolicy().hasHeightForWidth())
+        self.StackedWidget_ExecAndStop.setSizePolicy(sizePolicy2)
         self.StackedWidget_ExecAndStop.setStyleSheet(u"QStackedWidget {\n"
 "	background-color: transparent;\n"
 "}")
@@ -70,30 +156,11 @@ class Ui_MainWindow(object):
         self.gridLayout_3.setSpacing(0)
         self.gridLayout_3.setObjectName(u"gridLayout_3")
         self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.Button_Exec = QPushButton(self.StackedWidget_Page_Exec)
+        self.Button_Exec = ButtonBase(self.StackedWidget_Page_Exec)
         self.Button_Exec.setObjectName(u"Button_Exec")
-        sizePolicy.setHeightForWidth(self.Button_Exec.sizePolicy().hasHeightForWidth())
-        self.Button_Exec.setSizePolicy(sizePolicy)
+        sizePolicy1.setHeightForWidth(self.Button_Exec.sizePolicy().hasHeightForWidth())
+        self.Button_Exec.setSizePolicy(sizePolicy1)
         self.Button_Exec.setMaximumSize(QSize(210, 30))
-        self.Button_Exec.setStyleSheet(u"QPushButton {\n"
-"    color: black;\n"
-"    background: rgba(255, 255, 255, 150);\n"
-"    border: 1px solid rgba(0, 0, 0, 12);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 48);\n"
-"    border-radius: 3px;\n"
-"    padding: 5px 12px 6px 12px;\n"
-"    outline: none;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background: rgba(246, 246, 246, 0.5);\n"
-"}\n"
-"\n"
-"QPushButton:pressed, QPushButton:checked {\n"
-"    color: rgba(0, 0, 0, 123);\n"
-"    background: rgba(246, 246, 246, 75);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 15);\n"
-"}")
         icon1 = QIcon()
         icon1.addFile(u":/CheckBox_Icon/images/icons/CheckedSquare.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.Button_Exec.setIcon(icon1)
@@ -107,30 +174,11 @@ class Ui_MainWindow(object):
         self.gridLayout_2.setSpacing(0)
         self.gridLayout_2.setObjectName(u"gridLayout_2")
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.Button_Stop = QPushButton(self.StackedWidget_Page_Stop)
+        self.Button_Stop = ButtonBase(self.StackedWidget_Page_Stop)
         self.Button_Stop.setObjectName(u"Button_Stop")
-        sizePolicy.setHeightForWidth(self.Button_Stop.sizePolicy().hasHeightForWidth())
-        self.Button_Stop.setSizePolicy(sizePolicy)
+        sizePolicy1.setHeightForWidth(self.Button_Stop.sizePolicy().hasHeightForWidth())
+        self.Button_Stop.setSizePolicy(sizePolicy1)
         self.Button_Stop.setMaximumSize(QSize(210, 30))
-        self.Button_Stop.setStyleSheet(u"QPushButton {\n"
-"    color: black;\n"
-"    background: rgba(255, 255, 255, 150);\n"
-"    border: 1px solid rgba(0, 0, 0, 12);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 48);\n"
-"    border-radius: 3px;\n"
-"    padding: 5px 12px 6px 12px;\n"
-"    outline: none;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background: rgba(246, 246, 246, 0.5);\n"
-"}\n"
-"\n"
-"QPushButton:pressed, QPushButton:checked {\n"
-"    color: rgba(0, 0, 0, 123);\n"
-"    background: rgba(246, 246, 246, 75);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 15);\n"
-"}")
         icon2 = QIcon()
         icon2.addFile(u":/Button_Icon/images/icons/X.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.Button_Stop.setIcon(icon2)
@@ -141,159 +189,56 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.StackedWidget_ExecAndStop)
 
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalSpacer = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer)
 
 
-        self.gridLayout.addLayout(self.horizontalLayout_2, 0, 0, 4, 2)
-
-        self.ProgressBar_Exec = QProgressBar(self.centralwidget)
-        self.ProgressBar_Exec.setObjectName(u"ProgressBar_Exec")
-        self.ProgressBar_Exec.setStyleSheet(u"QProgressBar {\n"
-"	text-align: center;\n"
-"    color: black;\n"
-"    background-color: rgba(210, 210, 210, 150);\n"
-"    border: none;\n"
-"    border-radius: 5px;\n"
-"}\n"
-"  \n"
-"QProgressBar::chunk {\n"
-"	background-color: rgba(55, 110, 165, 150);\n"
-"}")
-
-        self.gridLayout.addWidget(self.ProgressBar_Exec, 5, 0, 1, 4)
-
-        self.Table = Table_ViewTasks(self.centralwidget)
-        self.Table.setObjectName(u"Table")
-        self.Table.setStyleSheet(u"QTableView {\n"
-"    background: rgba(255, 255, 255, 150);\n"
-"    selection-background-color: transparent;\n"
-"    alternate-background-color: transparent;\n"
-"    border: none;\n"
-"    border-radius: 3px;\n"
-"    outline: none;\n"
-"}\n"
-"\n"
-"QTableView::item {\n"
-"    height: 33px;\n"
-"    padding: 3px 6px;\n"
-"    background: transparent;\n"
-"    border: 0px;\n"
-"}\n"
-"\n"
-"\n"
-"QTableView::indicator {\n"
-"    width: 18px;\n"
-"    height: 18px;\n"
-"    background-color: transparent;\n"
-"    border: none;\n"
-"    border-radius: 3px;\n"
-"}\n"
-"\n"
-"\n"
-"QHeaderView {\n"
-"    background: transparent;\n"
-"}\n"
-"\n"
-"QHeaderView::section {\n"
-"    color: rgb(96, 96, 96);\n"
-"    padding: 2.4px 4.8px;\n"
-"    background-color: transparent;\n"
-"    border: 1px solid rgba(0, 0, 0, 15);\n"
-"}\n"
-"\n"
-"QHeaderView::section:horizontal {\n"
-"    height: 33px;\n"
-"    border-left: none;\n"
-"}\n"
-"\n"
-"QHeaderView::section:horizontal:last {\n"
-"    border-right: none;\n"
-"}\n"
-"\n"
-"QHeaderView::section:vertical {\n"
-" "
-                        "   border-top: none;\n"
-"}\n"
-"\n"
-"QHeaderView::section:checked {\n"
-"    background-color: transparent;\n"
-"}")
-
-        self.gridLayout.addWidget(self.Table, 4, 0, 1, 4)
+        self.gridLayout.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
 
         self.gridLayout_4 = QGridLayout()
         self.gridLayout_4.setSpacing(12)
         self.gridLayout_4.setObjectName(u"gridLayout_4")
-        self.LineEdit_pcSaveLoc = QLineEdit(self.centralwidget)
+        self.LineEdit_pcSaveLoc = LineEditBase(self.content)
         self.LineEdit_pcSaveLoc.setObjectName(u"LineEdit_pcSaveLoc")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.LineEdit_pcSaveLoc.sizePolicy().hasHeightForWidth())
-        self.LineEdit_pcSaveLoc.setSizePolicy(sizePolicy1)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.LineEdit_pcSaveLoc.sizePolicy().hasHeightForWidth())
+        self.LineEdit_pcSaveLoc.setSizePolicy(sizePolicy3)
         self.LineEdit_pcSaveLoc.setMinimumSize(QSize(210, 0))
-        self.LineEdit_pcSaveLoc.setStyleSheet(u"QLineEdit {\n"
-"    color: black;\n"
-"    background-color: rgba(255, 255, 255, 150);\n"
-"    border: 1px solid rgba(0, 0, 0, 12);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 100);\n"
-"    border-radius: 3px;\n"
-"    padding: 5px 10px 6px 10px;\n"
-"}\n"
-"\n"
-"QLineEdit:hover {\n"
-"    background-color: rgba(249, 249, 249, 123);\n"
-"    border: 1px solid rgba(0, 0, 0, 12);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 100);\n"
-"}\n"
-"\n"
-"LineEdit:focus {\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 12);\n"
-"    background-color: white;\n"
-"}")
 
         self.gridLayout_4.addWidget(self.LineEdit_pcSaveLoc, 0, 1, 2, 1)
 
-        self.Button_ViewOutput = QPushButton(self.centralwidget)
+        self.Button_ViewOutput = ButtonBase(self.content)
         self.Button_ViewOutput.setObjectName(u"Button_ViewOutput")
         self.Button_ViewOutput.setMaximumSize(QSize(30, 30))
-        self.Button_ViewOutput.setStyleSheet(u"QPushButton {\n"
-"    color: black;\n"
-"    background: rgba(255, 255, 255, 150);\n"
-"    border: 1px solid rgba(0, 0, 0, 12);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 48);\n"
-"    border-radius: 3px;\n"
-"    padding: 5px 12px 6px 12px;\n"
-"    outline: none;\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    background: rgba(246, 246, 246, 0.5);\n"
-"}\n"
-"\n"
-"QPushButton:pressed, QPushButton:checked {\n"
-"    color: rgba(0, 0, 0, 123);\n"
-"    background: rgba(246, 246, 246, 75);\n"
-"    border-bottom: 1px solid rgba(0, 0, 0, 15);\n"
-"}")
         icon3 = QIcon()
         icon3.addFile(u":/Button_Icon/images/icons/OpenedFolder.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.Button_ViewOutput.setIcon(icon3)
 
         self.gridLayout_4.addWidget(self.Button_ViewOutput, 0, 2, 2, 1)
 
-        self.Label_pcSaveLoc = QLabel(self.centralwidget)
+        self.Label_pcSaveLoc = LabelBase(self.content)
         self.Label_pcSaveLoc.setObjectName(u"Label_pcSaveLoc")
-        self.Label_pcSaveLoc.setStyleSheet(u"QLabel {\n"
-"	/*qproperty-alignment: AlignCenter;*/\n"
-"}")
 
         self.gridLayout_4.addWidget(self.Label_pcSaveLoc, 0, 0, 2, 1)
 
 
-        self.gridLayout.addLayout(self.gridLayout_4, 0, 2, 4, 2)
+        self.gridLayout.addLayout(self.gridLayout_4, 0, 1, 1, 1)
+
+        self.Table = Table_ViewTasks(self.content)
+        self.Table.setObjectName(u"Table")
+
+        self.gridLayout.addWidget(self.Table, 1, 0, 1, 2)
+
+        self.ProgressBar_Exec = ProgressBarBase(self.content)
+        self.ProgressBar_Exec.setObjectName(u"ProgressBar_Exec")
+
+        self.gridLayout.addWidget(self.ProgressBar_Exec, 2, 0, 1, 2)
+
+
+        self.gridLayout_5.addWidget(self.content, 1, 0, 1, 1)
 
         MainWindow.setCentralWidget(self.centralwidget)
 

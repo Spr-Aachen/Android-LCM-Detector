@@ -1,13 +1,14 @@
-import os
-from pathlib import Path
-from PySide6.QtGui import QPixmap
+from typing import Optional
+from PySide6.QtGui import QPixmap, QResizeEvent, QImage
 from PySide6.QtWidgets import *
+from QEasyWidgets.Windows import *
 
+from components.Components import *
 from windows.ui.UI_Window import *
 
 ##############################################################################################################################
 
-class Window_MainWindow(QMainWindow):
+class Window_MainWindow(MainWindowBase):
     ui = Ui_MainWindow()
 
     def __init__(self, parent = None):
@@ -15,26 +16,31 @@ class Window_MainWindow(QMainWindow):
 
         self.ui.setupUi(self)
 
+        self.setTitleBar(self.ui.titleBar)
+
+        self.setCentralWidget(self.ui.centralwidget)
+
 ##############################################################################################################################
 
 class ImageWindow(QWidget):
+    tabs = {}
+
     def __init__(self, image_paths: dict):
         super().__init__()
+
         self.image_paths = image_paths
         self.current_indices = {key: 0 for key in image_paths.keys()}
-        self.tabs = {}
-        self.initUI()
 
     def initUI(self):
-        self.tab_widget = QTabWidget()
+        self.tab_widget = TabWidgetBase()
 
         for name, paths in self.image_paths.items():
-            label = QLabel()
-            lbl_path = QLabel()
+            lbl_pic = LabelBase()
+            lbl_path = LabelBase()
 
-            prev_button = QPushButton("<")
+            prev_button = ButtonBase("<")
             prev_button.clicked.connect(lambda checked, n=name: self.show_prev_image(n))
-            next_button = QPushButton(">")
+            next_button = ButtonBase(">")
             next_button.clicked.connect(lambda checked, n=name: self.show_next_image(n))
 
             button_layout = QHBoxLayout()
@@ -42,7 +48,7 @@ class ImageWindow(QWidget):
             button_layout.addWidget(next_button)
 
             tab_layout = QVBoxLayout()
-            tab_layout.addWidget(label)
+            tab_layout.addWidget(lbl_pic)
             tab_layout.addWidget(lbl_path)
             tab_layout.addLayout(button_layout)
 
@@ -52,7 +58,7 @@ class ImageWindow(QWidget):
             self.tab_widget.addTab(tab, name)
 
             self.tabs[name] = {
-                'label': label,
+                'lbl_pic': lbl_pic,
                 'lbl_path': lbl_path,
                 'tab': tab
             }
@@ -69,11 +75,10 @@ class ImageWindow(QWidget):
         pixmap = QPixmap(self.image_paths[name][current_index])
 
         tab_components = self.tabs[name]
-        label = tab_components['label']
+        lbl_pic = tab_components['lbl_pic']
         lbl_path = tab_components['lbl_path']
 
-        label.setPixmap(pixmap)
-        label.setScaledContents(True)
+        lbl_pic.setPixmap(pixmap)
         lbl_path.setText(f"{current_index + 1}/{len(self.image_paths[name])}: {self.image_paths[name][current_index]}")
 
     def show_prev_image(self, name):
@@ -87,6 +92,7 @@ class ImageWindow(QWidget):
             self.update_image(name)
 
     def show(self):
+        self.initUI()
         self.setWindowTitle("Image Viewer")
         super().show()
 

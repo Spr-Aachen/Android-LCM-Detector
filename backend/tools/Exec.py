@@ -14,11 +14,6 @@ from utils.adb import *
 
 ##############################################################################################################################
 
-# Get current directory
-CurrentDir = sys.path[0]
-
-##############################################################################################################################
-
 def UpdateDict(Dict1, Dict2):
     for key, value in Dict2.items():
         if key in Dict1:
@@ -28,7 +23,7 @@ def UpdateDict(Dict1, Dict2):
     return Dict1
 
 
-Result = {}
+result = {}
 def save_images(
     cap: cv2.VideoCapture,
     model_cls: str,
@@ -42,7 +37,7 @@ def save_images(
     output_folder, subdir,
     stopEvent: threading.Event
 ):
-    global Result
+    global result
 
     # Initialize frame counter
     frame_count = 0
@@ -62,7 +57,7 @@ def save_images(
                 file = save_image(frame_count, frame, output_folder, subdir)
                 lst_outputH.append(file)
             UpdateDict(
-                Dict1 = Result,
+                Dict1 = result,
                 Dict2 = {'lst_outputH': lst_outputH}
             )
 
@@ -88,13 +83,12 @@ def save_images(
             else:
                 pass
             UpdateDict(
-                Dict1 = Result,
+                Dict1 = result,
                 Dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
             )
 
         # 分屏+检查黑白
         lst_outputSplitB:List[str] = []
-        # lst_outputSplitW:List[str] = [] # 暂不考虑
         if bChkSplit_then_BW:
             # 这里需要对frame进行分割，然后对分割后的图像进行白色判断
             height, width = frame.shape[:2]
@@ -130,7 +124,7 @@ def save_images(
                                 file = save_image(frame_count, frame, output_folder, subdir)
                                 lst_outputSplitB.append(file)
             UpdateDict(
-                Dict1 = Result,
+                Dict1 = result,
                 Dict2 = {'lst_outputSplitB': lst_outputSplitB}
             )
 
@@ -141,7 +135,7 @@ def save_images(
                 file = save_image(frame_count, frame, output_folder, subdir)
                 lst_outputNobarSplitB.append(file)
             UpdateDict(
-                Dict1 = Result,
+                Dict1 = result,
                 Dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
             )
 
@@ -152,13 +146,13 @@ def save_images(
                 file = save_image(frame_count, frame, output_folder, subdir)
                 lst_outputBlackback.append(file)
             UpdateDict(
-                Dict1 = Result,
+                Dict1 = result,
                 Dict2 = {'lst_outputBlackback':lst_outputBlackback}
             )
 
         frame_count += 1
         print(f'frame_count: {frame_count}')
-    print('Result:', Result)
+    print('result:', result)
 
 
 def videoAnalyser(
@@ -169,26 +163,25 @@ def videoAnalyser(
     bChkNobarSplit_then_BW: bool,
     bChkBlackback: bool,
     output_folder: str,
-    ModelDir: str,
+    modelDir: str,
     toOnnx: bool,
     stopEvent: threading.Event
 ):
-    global Result
+    global result
 
     print(Fore.GREEN, 'analysis_video', Style.RESET_ALL)
     print(Fore.GREEN, 'analysis_video', video_path, bChkH, bChkBW, bChkSplit_then_BW, Style.RESET_ALL)
 
     # 设置输出文件夹
     subdir = Path(video_path).parent.stem
-    #os.makedirs(os.path.join(output_folder, subdir), exist_ok=True)
 
     # 加载视频流
     cap = cv2.VideoCapture(0 if video_path is None else video_path)
 
     # Setup the YOLO models' paths
-    model_cls_path = Path(ModelDir).joinpath('models_cls_videoHua.pt').as_posix()
-    model_clsBw_path = Path(ModelDir).joinpath('modelm-cls_screen_w_rec_basic.pt').as_posix()
-    model_detect_splitScreen_path = Path(ModelDir).joinpath("model_splitScreen.pt").as_posix()
+    model_cls_path = Path(modelDir).joinpath('models_cls_videoHua.pt').as_posix()
+    model_clsBw_path = Path(modelDir).joinpath('modelm-cls_screen_w_rec_basic.pt').as_posix()
+    model_detect_splitScreen_path = Path(modelDir).joinpath("model_splitScreen.pt").as_posix()
     # Load the YOLO models
     model_cls = YOLO(model_cls_path)
     if toOnnx and not Path(f"{Path(model_cls_path).stem}.onnx").exists() and not stopEvent.is_set():
@@ -230,16 +223,16 @@ StopRecordEvent = threading.Event()
 StopAllEvent = threading.Event()
 def RecordAndPull(
     SavePath_AD: str,
-    SaveDir_PC: str,
+    saveDir_PC: str,
     bChkH,
     bChkBW,
     bChkSplit_then_BW,
     bChkNobarSplit_then_BW,
     bChkBlackback,
     output_folder,
-    ModelDir,
+    modelDir,
     toOnnx,
-    RecPeriod: int = 180,
+    recPeriod: int = 180,
 ):
     global adbRecord
     global StopRecordEvent
@@ -248,13 +241,13 @@ def RecordAndPull(
     analysingThreads = []
     while not (StopRecordEvent.is_set() or StopAllEvent.is_set()) :
         try:
-            adbRecord = Record(SavePath_AD, RecPeriod)
+            adbRecord = Record(SavePath_AD, recPeriod)
             adbRecord.wait()
-            adbPull = Pull(SavePath_AD, SaveDir_PC)
+            adbPull = Pull(SavePath_AD, saveDir_PC)
             adbPull.wait()
             i += 1
-            OldName = Path(SaveDir_PC).joinpath(Path(SavePath_AD).name).as_posix()
-            NewName = Path(SaveDir_PC).joinpath(f"{i}{Path(SavePath_AD).suffix}").as_posix()
+            OldName = Path(saveDir_PC).joinpath(Path(SavePath_AD).name).as_posix()
+            NewName = Path(saveDir_PC).joinpath(f"{i}{Path(SavePath_AD).suffix}").as_posix()
             if Path(OldName).exists():
                 if Path(NewName).exists():
                     os.remove(NewName)
@@ -266,7 +259,7 @@ def RecordAndPull(
                 continue
             analysingThread = threading.Thread(
                 target = videoAnalyser,
-                args = (NewName, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, toOnnx, StopAllEvent)
+                args = (NewName, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, modelDir, toOnnx, StopAllEvent)
             )
             analysingThreads.append(analysingThread)
             analysingThread.start()
@@ -280,26 +273,43 @@ def RecordAndPull(
 
 
 def Exec(
-    TaskCMD,
-    SaveDir_PC,
+    taskCMD,
+    saveDir_PC,
     bChkH,
     bChkBW,
     bChkSplit_then_BW,
     bChkNobarSplit_then_BW,
     bChkBlackback,
     output_folder,
-    ModelDir,
+    modelDir,
     toOnnx: bool = False,
-    RecPeriod: int = 180,
+    recPeriod: int = 180,
 ):
+    """
+    执行测试用例并记录屏幕录像（以recPeriod为周期进行录像检测）
+    Args:
+        taskCMD (str): 测试用例命令
+        saveDir_PC (str): 录屏保存路径
+        bChkH (bool): 是否检测横屏
+        bChkBW (bool): 是否检测黑白屏
+        bChkSplit_then_BW (bool): 是否检测分屏后黑白屏
+        bChkNobarSplit_then_BW (bool): 是否检测无栏分屏后黑白屏
+        bChkBlackback (bool): 是否检测黑屏
+        output_folder (str): 结果输出路径
+        modelDir (str): 模型路径
+        toOnnx (bool): 是否转换为onnx格式
+        recPeriod (int): 录屏周期（秒）
+    Returns:
+        result (dict): 检测结果
+    """
     global adbRecord
     global StopRecordEvent
     global StopAllEvent
-    global Result
+    global result
 
     # Set the save location
     SavePath_AD = "/sdcard/testcase.mp4"
-    Path(SaveDir_PC).mkdir(parents = True) if not Path(SaveDir_PC).exists() else None
+    Path(saveDir_PC).mkdir(parents = True) if not Path(saveDir_PC).exists() else None
 
     # Reboot server
     adbReboot = Reboot()
@@ -308,13 +318,13 @@ def Exec(
     # Start the screen recording thread
     recordingThread = threading.Thread(
         target = RecordAndPull,
-        args = (SavePath_AD, SaveDir_PC, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, ModelDir, toOnnx, RecPeriod)
+        args = (SavePath_AD, saveDir_PC, bChkH, bChkBW, bChkSplit_then_BW, bChkNobarSplit_then_BW, bChkBlackback, output_folder, modelDir, toOnnx, recPeriod)
     )
     recordingThread.start()
 
     # Execute the main task
     adbTask = subprocess.Popen(
-        TaskCMD,
+        taskCMD,
         shell = True
     )
     # Wait for the task to finish or for the stop event to be set
@@ -330,6 +340,6 @@ def Exec(
         adbRecord.terminate()
     recordingThread.join()
 
-    return Result
+    return result
 
 ##############################################################################################################################

@@ -9,7 +9,7 @@ from subprocess import Popen
 ##############################################################################################################################
 
 # Get current directory
-CurrentDir = sys.path[0]
+CurrentDir = Path(sys.argv[0]).parent.as_posix()
 
 
 IsCompiled = False
@@ -17,37 +17,24 @@ IsCompiled = False
 
 def run(
     ModelDir: str,
+    ProfileDir: str,
 ):
-    if not IsCompiled:
-        BackendDir = Path(f'{CurrentDir}{os.sep}backend').as_posix()
-        backendFile = Path(f'{BackendDir}{os.sep}main.py').as_posix()
-        Popen(
-            f'python "{backendFile}" --modeldir "{ModelDir}"',
-            shell = True
-        )
-        FrontendDir = Path(f'{CurrentDir}{os.sep}frontend').as_posix()
-        FrontendFile = Path(f'{FrontendDir}{os.sep}main.py').as_posix()
-        Popen(
-            f'python "{FrontendFile}"',
-            shell = True
-        )
-    else:
-        BackendDir = Path(f'{CurrentDir}{os.sep}backend').as_posix()
-        backendFile = Path(f'{BackendDir}{os.sep}main.exe').as_posix()
-        Popen(
-            f'"{backendFile}"'
-        )
-        FrontendDir = Path(f'{CurrentDir}{os.sep}frontend').as_posix()
-        FrontendFile = Path(f'{FrontendDir}{os.sep}main.exe').as_posix()
-        Popen(
-            f'"{FrontendFile}"'
-        )
+    resourceDir = Path(sys._MEIPASS).as_posix() if getattr(sys, 'frozen', None) else CurrentDir
+    BackendDir = Path(f'{resourceDir}{os.sep}backend').as_posix()
+    backendFile = Path(f'{BackendDir}{os.sep}main.py').as_posix()
+    backendCMD = f'python "{backendFile}" --modeldir "{ModelDir}"'
+    Popen(backendCMD, shell = True)
+    FrontendDir = Path(f'{resourceDir}{os.sep}frontend').as_posix()
+    FrontendFile = Path(f'{FrontendDir}{os.sep}main.py').as_posix()
+    frontendCMD = f'python "{FrontendFile}" --profile "{ProfileDir}"'
+    Popen(frontendCMD, shell = True)
 
 ##############################################################################################################################
 
 if __name__ == "__main__":
     run(
-        ModelDir = f'{CurrentDir}{os.sep}models'
+        ModelDir = Path(CurrentDir).joinpath('models').as_posix(),
+        ProfileDir = Path(CurrentDir).joinpath('profile').as_posix()
     )
 
 ##############################################################################################################################
