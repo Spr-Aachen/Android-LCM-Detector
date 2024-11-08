@@ -34,7 +34,6 @@ def is_mostly_black(frame: np.ndarray, sample_size=1000) -> bool:
     return black_ratio > 0.9
 
 
-# [2024-8-14]
 def is_black_img(image: np.ndarray, sample_size=1000) -> bool:
     height, width = image.shape[:2]
     # print(Fore.GREEN, f"Image size: {width} x {height}", Fore.RESET)

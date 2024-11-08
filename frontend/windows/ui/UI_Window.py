@@ -139,13 +139,26 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.Button_LoadData)
 
-        self.StackedWidget_ExecAndStop = QStackedWidget(self.content)
-        self.StackedWidget_ExecAndStop.setObjectName(u"StackedWidget_ExecAndStop")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.Button_UploadFile = ButtonBase(self.content)
+        self.Button_UploadFile.setObjectName(u"Button_UploadFile")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Ignored)
         sizePolicy2.setHorizontalStretch(0)
         sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.StackedWidget_ExecAndStop.sizePolicy().hasHeightForWidth())
-        self.StackedWidget_ExecAndStop.setSizePolicy(sizePolicy2)
+        sizePolicy2.setHeightForWidth(self.Button_UploadFile.sizePolicy().hasHeightForWidth())
+        self.Button_UploadFile.setSizePolicy(sizePolicy2)
+        icon1 = QIcon()
+        icon1.addFile(u":/Button_Icon/images/icons/file-earmark-arrow-up.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.Button_UploadFile.setIcon(icon1)
+
+        self.horizontalLayout_2.addWidget(self.Button_UploadFile)
+
+        self.StackedWidget_ExecAndStop = QStackedWidget(self.content)
+        self.StackedWidget_ExecAndStop.setObjectName(u"StackedWidget_ExecAndStop")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.StackedWidget_ExecAndStop.sizePolicy().hasHeightForWidth())
+        self.StackedWidget_ExecAndStop.setSizePolicy(sizePolicy3)
         self.StackedWidget_ExecAndStop.setStyleSheet(u"QStackedWidget {\n"
 "	background-color: transparent;\n"
 "}")
@@ -161,9 +174,9 @@ class Ui_MainWindow(object):
         sizePolicy1.setHeightForWidth(self.Button_Exec.sizePolicy().hasHeightForWidth())
         self.Button_Exec.setSizePolicy(sizePolicy1)
         self.Button_Exec.setMaximumSize(QSize(210, 30))
-        icon1 = QIcon()
-        icon1.addFile(u":/CheckBox_Icon/images/icons/CheckedSquare.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_Exec.setIcon(icon1)
+        icon2 = QIcon()
+        icon2.addFile(u":/CheckBox_Icon/images/icons/CheckedSquare.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.Button_Exec.setIcon(icon2)
 
         self.gridLayout_3.addWidget(self.Button_Exec, 0, 0, 1, 1)
 
@@ -179,9 +192,9 @@ class Ui_MainWindow(object):
         sizePolicy1.setHeightForWidth(self.Button_Stop.sizePolicy().hasHeightForWidth())
         self.Button_Stop.setSizePolicy(sizePolicy1)
         self.Button_Stop.setMaximumSize(QSize(210, 30))
-        icon2 = QIcon()
-        icon2.addFile(u":/Button_Icon/images/icons/X.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_Stop.setIcon(icon2)
+        icon3 = QIcon()
+        icon3.addFile(u":/Button_Icon/images/icons/X.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.Button_Stop.setIcon(icon3)
 
         self.gridLayout_2.addWidget(self.Button_Stop, 0, 0, 1, 1)
 
@@ -201,11 +214,11 @@ class Ui_MainWindow(object):
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.LineEdit_pcSaveLoc = LineEditBase(self.content)
         self.LineEdit_pcSaveLoc.setObjectName(u"LineEdit_pcSaveLoc")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.LineEdit_pcSaveLoc.sizePolicy().hasHeightForWidth())
-        self.LineEdit_pcSaveLoc.setSizePolicy(sizePolicy3)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.LineEdit_pcSaveLoc.sizePolicy().hasHeightForWidth())
+        self.LineEdit_pcSaveLoc.setSizePolicy(sizePolicy4)
         self.LineEdit_pcSaveLoc.setMinimumSize(QSize(210, 0))
 
         self.gridLayout_4.addWidget(self.LineEdit_pcSaveLoc, 0, 1, 2, 1)
@@ -213,9 +226,9 @@ class Ui_MainWindow(object):
         self.Button_ViewOutput = ButtonBase(self.content)
         self.Button_ViewOutput.setObjectName(u"Button_ViewOutput")
         self.Button_ViewOutput.setMaximumSize(QSize(30, 30))
-        icon3 = QIcon()
-        icon3.addFile(u":/Button_Icon/images/icons/OpenedFolder.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_ViewOutput.setIcon(icon3)
+        icon4 = QIcon()
+        icon4.addFile(u":/Button_Icon/images/icons/OpenedFolder.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.Button_ViewOutput.setIcon(icon4)
 
         self.gridLayout_4.addWidget(self.Button_ViewOutput, 0, 2, 2, 1)
 

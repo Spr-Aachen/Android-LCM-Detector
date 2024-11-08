@@ -11,6 +11,7 @@ from typing import Optional
 from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import *
 from QEasyWidgets import ComponentsSignals, Theme, EasyTheme, IconBase
+from QEasyWidgets import QFunctions as QFunc
 
 from windows.Windows import *
 from functions import *
@@ -29,33 +30,63 @@ ConfigDir = Path(ProfileDir).joinpath('Config').as_posix()
 ##############################################################################################################################
 
 TypeDict = {
-    'chkHua': '检查花屏',
-    'chkB_ok_W': '检查黑白',
-    'chkSplit_then_BokW': '分屏+检查黑白',
-    'chkNobarSplit_then_BW': '无bar分屏+检查黑白',
-    'chkBlackback': '桌面来电底色'
+    '检查花屏': 'chkHua',
+    '检查黑白': 'chkB_ok_W',
+    '分屏+检查黑白': 'chkSplit_then_BokW',
+    '无bar分屏+检查黑白': 'chkNobarSplit_then_BW',
+    '桌面来电底色': 'chkBlackback'
 }
 
 
-def Request(
+def Upload(
     protocol: str = 'http',
     ip: str = 'localhost',
     port: int = 8080,
-    caseCMD: str = ...,
-    saveDir_PC: str = ...,
-    types: list[str] = ...,
-    output_folder: str = ...,
+    filePaths: Union[list, str] = ...,
 ):
-    URL = f"{protocol}://{ip}:{port}/execute"
+    URL = f"{protocol}://{ip}:{port}/upload"
+    files = [{"file": (Path(filePath).name, open(filePath, "rb"), 'application/json')} for filePath in QFunc.ToIterable(filePaths)]
+    response = requests.post(
+        url = URL,
+        files = files
+    )
+    return json.loads(response.text) if response.status_code == 200 else "文件上传失败", response.status_code
+
+
+class Thread_Upload(QThread):
+    def __init__(self,
+        protocol: str = 'http',
+        ip: str = 'localhost',
+        port: int = 8080,
+        filePath: str = ...
+    ):
+        super().__init__()
+
+        self.protocol = protocol
+        self.ip = ip
+        self.port = port
+        self.filePath = filePath
+
+    def run(self):
+        result, statuscode = Upload(
+            protocol = self.protocol,
+            ip = self.ip,
+            port = self.port,
+            filePath = self.filePath
+        )
+
+
+def ExecuteAnalyser(
+    protocol: str = 'http',
+    ip: str = 'localhost',
+    port: int = 8080,
+    fileName: str = ...,
+    types: list[str] = ...,
+):
+    URL = f"{protocol}://{ip}:{port}/execute_analyser"
     Payload = {
-        'caseCMD': caseCMD,
-        'saveDir_PC': saveDir_PC,
-        'chkHua': TypeDict['chkHua'] in types,
-        'chkB_ok_W': TypeDict['chkB_ok_W'] in types,
-        'chkSplit_then_BokW': TypeDict['chkNobarSplit_then_BW'] in types,
-        'chkNobarSplit_then_BW': TypeDict['chkNobarSplit_then_BW'] in types,
-        'chkBlackback': TypeDict['chkBlackback'] in types,
-        'output_folder': output_folder
+        'fileName': fileName,
+        'chkTypes': [TypeDict[type] for type in types],
     }
     with requests.post(
         url = URL,
@@ -75,7 +106,68 @@ def Request(
             return "Request failed", response.status_code
 
 
-class Thread(QThread):
+class Thread_ExecuteAnalyser(QThread):
+    dictReceived = Signal(dict, bool)
+
+    def __init__(self,
+        protocol: str = 'http',
+        ip: str = 'localhost',
+        port: int = 8080,
+        fileName: str = ...,
+        types: list[str] = ...,
+    ):
+        super().__init__()
+
+        self.protocol = protocol
+        self.ip = ip
+        self.port = port
+        self.fileName = fileName
+        self.types = types
+
+    def run(self):
+        result, statuscode = ExecuteAnalyser(
+            protocol = self.protocol,
+            ip = self.ip,
+            port = self.port,
+            fileName = self.fileName,
+            types = self.types,
+        )
+        self.dictReceived.emit(result, True if statuscode == 200 else False)
+
+
+def Execute(
+    protocol: str = 'http',
+    ip: str = 'localhost',
+    port: int = 8080,
+    caseCMD: str = ...,
+    types: list[str] = ...,
+    outputFolder: str = ...,
+):
+    URL = f"{protocol}://{ip}:{port}/execute"
+    Payload = {
+        'caseCMD': caseCMD,
+        'chkTypes': [TypeDict[type] for type in types],
+        'outputFolder': outputFolder
+    }
+    with requests.post(
+        url = URL,
+        data = json.dumps(Payload),
+    ) as response:
+        if response.status_code == 200:
+            for chunk in response.iter_content(chunk_size = None, decode_unicode = False):
+                if chunk:
+                    content = chunk.decode('utf-8', errors = 'ignore')
+                    try:
+                        parsed_content = json.loads(content)
+                        result = parsed_content['message']
+                        return result, response.status_code
+                    except:
+                        continue
+        else:
+            return "Request failed", response.status_code
+
+
+class Thread_Execute(QThread):
     dictReceived = Signal(dict, bool)
 
     def __init__(self,
@@ -85,7 +177,7 @@ class Thread(QThread):
         caseCMD: str = ...,
         saveDir_PC: str = ...,
         types: list[str] = ...,
-        output_folder: str = ...,
+        outputFolder: str = ...,
     ):
         super().__init__()
 
@@ -95,19 +187,20 @@ class Thread(QThread):
         self.caseCMD = caseCMD
         self.saveDir_PC = saveDir_PC
         self.types = types
-        self.output_folder = output_folder
+        self.outputFolder = outputFolder
 
     def run(self):
-        result, statuscode = Request(
+        result, statuscode = Execute(
             protocol = self.protocol,
             ip = self.ip,
             port = self.port,
             caseCMD = self.caseCMD,
             saveDir_PC = self.saveDir_PC,
             types = self.types,
-            output_folder = self.output_folder
+            outputFolder = self.outputFolder
         )
         self.dictReceived.emit(result, True if statuscode == 200 else False)
+        # TODO: unpack zipfile to saveDir_PC
 
 
 def stopTask(
@@ -201,45 +294,94 @@ class MainWindow(Window_MainWindow):
 
     def open_excel_file(self):
         # 弹出文件选择对话框
-        file_path, _ = QFileDialog.getOpenFileName(self,
+        filePath, _ = QFileDialog.getOpenFileName(self,
             caption = "打开Excel文件",
             dir = "",
             filter = "Excel Files (*.xlsx *.xls)"
         )
-        sheet_name, ok = QInputDialog.getText(self,
+        if len(filePath.strip()) == 0:
+            return
+        sheetName, ok = QInputDialog.getText(self,
             "子表名称",
             "请输入子表名称，若没有子表则留空",
             text = "场景测试用例"
         )
-        if file_path:
-            self.sqlManager.file_path = file_path
-            try:
-                # 与历史记录数据库建立连接
-                self.sqlManager.create_historydb()
-                # 检查哈希值是否存在于数据库中，不在则将[表格哈希值,表格数据库名]写入历史记录数据库
-                self.sqlManager.filedb_name = self.sqlManager.chk_historydb()
-                if self.sqlManager.filedb_name is None:
-                    # 使用polars读取Excel文件
-                    df = polars.read_excel(file_path, sheet_name = sheet_name) if ok and len(sheet_name) > 0 else polars.read_excel(file_path)
-                    df.fill_nan("")
-                    # 在表格末端添加一列，用于存储测试状态
-                    df.insert_column(len(df.columns), polars.Series('测试状态', ["未测试"] * len(df)))
-                    # 将DataFrame写入excel数据库
-                    self.sqlManager.export_data_to_filedb(df, new=True)
-                    # 将[表格哈希值,表格数据库名]写入历史记录数据库
-                    self.sqlManager.to_historydb()
-                else:
-                    df = self.load_data_from_exceldb()
-            except Exception as e:
-                print(f"出错: {e}")
+        self.sqlManager.filePath = filePath
+        try:
+            # 与历史记录数据库建立连接
+            self.sqlManager.create_historydb()
+            # 检查哈希值是否存在于数据库中，不在则将[表格哈希值,表格数据库名]写入历史记录数据库
+            self.sqlManager.filedb_name = self.sqlManager.chk_historydb()
+            if self.sqlManager.filedb_name is None:
+                # 使用polars读取Excel文件
+                df = polars.read_excel(filePath, sheet_name = sheetName) if ok and len(sheetName) > 0 else polars.read_excel(filePath)
+                df.fill_nan("")
+                # 在表格末端添加一列，用于存储测试状态
+                df.insert_column(len(df.columns), polars.Series('测试状态', ["未测试"] * len(df)))
+                # 将DataFrame写入excel数据库
+                self.sqlManager.export_data_to_filedb(df, new=True)
+                # 将[表格哈希值,表格数据库名]写入历史记录数据库
+                self.sqlManager.to_historydb()
             else:
-                # 清空表格
-                while self.ui.Table.rowCount() > 0:
-                    self.ui.Table.removeRow(0)
-                # 填充数据
-                self.ui.Table.setValue(
-                    df.to_dict(as_series=False)
-                )
+                df = self.load_data_from_exceldb()
+        except Exception as e:
+            print(f"出错: {e}")
+        else:
+            # 清空表格
+            while self.ui.Table.rowCount() > 0:
+                self.ui.Table.removeRow(0)
+            # 填充数据
+            self.ui.Table.setValue(
+                df.to_dict(as_series=False)
+            )
+
+    def startAnalyseThread(self, fileName, ChkTypes):
+        if QMessageBox.question(self, '提示', '是否开始分析？', QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.No:
+            return
+        # Start thread
+        if self.Thread is not None and self.Thread.isRunning():
+            self.Thread.terminate()
+        self.Thread = Thread_ExecuteAnalyser(
+            'http',
+            'localhost',
+            8080,
+            fileName,
+            ChkTypes,
+        )
+        self.Thread.dictReceived.connect(
+            lambda dict, isSucceeded: (
+                self.ui.ProgressBar_Exec.setRange(0, 100),
+                self.ui.ProgressBar_Exec.setValue(100),
+                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
+            )
+        )
+        self.Thread.start()
+        self.ui.ProgressBar_Exec.setRange(0, 0)
+        self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Stop)
+
+    def upload_file(self):
+        # 弹出文件选择对话框
+        filePath, _ = QFileDialog.getOpenFileName(self,
+            caption = "上传文件",
+            dir = "",
+            filter = "Video Files (*.mp4 *.avi *.mkv *.flv)"
+        )
+        if filePath is None:
+            return
+        if self.Thread is not None and self.Thread.isRunning():
+            self.Thread.terminate()
+        self.Thread = Thread_Upload(
+            'http',
+            'localhost',
+            8080,
+            filePath
+        )
+        self.Thread.finished.connect(
+            lambda: (
+                self.startAnalyseThread(Path(filePath).name, list(TypeDict.keys()))
+            )
+        )
+        self.Thread.start()
 
     def updateResultDict(self, case: str, result: dict):
         '''
@@ -255,20 +397,20 @@ class MainWindow(Window_MainWindow):
         SaveRoot_PC = self.ui.LineEdit_pcSaveLoc.text()
         saveDir_PC = Path(SaveRoot_PC).joinpath(case).as_posix()
         ChkTypes = self.ui.Table.getCaseChkTypes(caseRow)
-        output_folder = saveDir_PC
+        outputFolder = saveDir_PC
         # Update caseDict
         self.updateCaseDict(caseRow, saveDir_PC)
         # Start thread
         if self.Thread is not None and self.Thread.isRunning():
             self.Thread.terminate()
-        self.Thread = Thread(
+        self.Thread = Thread_Execute(
             'http',
             'localhost',
             8080,
             caseCMD,
             saveDir_PC,
             ChkTypes,
-            output_folder,
+            outputFolder,
         )
         self.Thread.dictReceived.connect(
             lambda dict, isSucceeded: (
@@ -415,6 +557,9 @@ class MainWindow(Window_MainWindow):
 
         self.ui.Button_LoadData.setText("打开Excel文件")
         self.ui.Button_LoadData.clicked.connect(self.open_excel_file)
+
+        self.ui.Button_UploadFile.setText("上传视频文件")
+        self.ui.Button_UploadFile.clicked.connect(self.upload_file)
 
         self.ui.Button_Exec.setText("执行测试用例")
         self.ui.Button_Exec.clicked.connect(self.Execute)
