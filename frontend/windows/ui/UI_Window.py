@@ -125,82 +125,18 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setSpacing(21)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.Button_LoadData = ButtonBase(self.content)
-        self.Button_LoadData.setObjectName(u"Button_LoadData")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.Button_LoadData.sizePolicy().hasHeightForWidth())
-        self.Button_LoadData.setSizePolicy(sizePolicy1)
-        self.Button_LoadData.setMaximumSize(QSize(210, 30))
-        icon = QIcon()
-        icon.addFile(u":/Button_Icon/images/icons/Plus.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_LoadData.setIcon(icon)
-
-        self.horizontalLayout_2.addWidget(self.Button_LoadData)
-
         self.Button_UploadFile = ButtonBase(self.content)
         self.Button_UploadFile.setObjectName(u"Button_UploadFile")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Ignored)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.Button_UploadFile.sizePolicy().hasHeightForWidth())
-        self.Button_UploadFile.setSizePolicy(sizePolicy2)
-        icon1 = QIcon()
-        icon1.addFile(u":/Button_Icon/images/icons/file-earmark-arrow-up.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_UploadFile.setIcon(icon1)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.Button_UploadFile.sizePolicy().hasHeightForWidth())
+        self.Button_UploadFile.setSizePolicy(sizePolicy1)
+        icon = QIcon()
+        icon.addFile(u":/Button_Icon/images/icons/file-earmark-arrow-up.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.Button_UploadFile.setIcon(icon)
 
         self.horizontalLayout_2.addWidget(self.Button_UploadFile)
-
-        self.StackedWidget_ExecAndStop = QStackedWidget(self.content)
-        self.StackedWidget_ExecAndStop.setObjectName(u"StackedWidget_ExecAndStop")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.StackedWidget_ExecAndStop.sizePolicy().hasHeightForWidth())
-        self.StackedWidget_ExecAndStop.setSizePolicy(sizePolicy3)
-        self.StackedWidget_ExecAndStop.setStyleSheet(u"QStackedWidget {\n"
-"	background-color: transparent;\n"
-"}")
-        self.StackedWidget_Page_Exec = QWidget()
-        self.StackedWidget_Page_Exec.setObjectName(u"StackedWidget_Page_Exec")
-        self.StackedWidget_Page_Exec.setStyleSheet(u"")
-        self.gridLayout_3 = QGridLayout(self.StackedWidget_Page_Exec)
-        self.gridLayout_3.setSpacing(0)
-        self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.gridLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.Button_Exec = ButtonBase(self.StackedWidget_Page_Exec)
-        self.Button_Exec.setObjectName(u"Button_Exec")
-        sizePolicy1.setHeightForWidth(self.Button_Exec.sizePolicy().hasHeightForWidth())
-        self.Button_Exec.setSizePolicy(sizePolicy1)
-        self.Button_Exec.setMaximumSize(QSize(210, 30))
-        icon2 = QIcon()
-        icon2.addFile(u":/CheckBox_Icon/images/icons/CheckedSquare.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_Exec.setIcon(icon2)
-
-        self.gridLayout_3.addWidget(self.Button_Exec, 0, 0, 1, 1)
-
-        self.StackedWidget_ExecAndStop.addWidget(self.StackedWidget_Page_Exec)
-        self.StackedWidget_Page_Stop = QWidget()
-        self.StackedWidget_Page_Stop.setObjectName(u"StackedWidget_Page_Stop")
-        self.gridLayout_2 = QGridLayout(self.StackedWidget_Page_Stop)
-        self.gridLayout_2.setSpacing(0)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.Button_Stop = ButtonBase(self.StackedWidget_Page_Stop)
-        self.Button_Stop.setObjectName(u"Button_Stop")
-        sizePolicy1.setHeightForWidth(self.Button_Stop.sizePolicy().hasHeightForWidth())
-        self.Button_Stop.setSizePolicy(sizePolicy1)
-        self.Button_Stop.setMaximumSize(QSize(210, 30))
-        icon3 = QIcon()
-        icon3.addFile(u":/Button_Icon/images/icons/X.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_Stop.setIcon(icon3)
-
-        self.gridLayout_2.addWidget(self.Button_Stop, 0, 0, 1, 1)
-
-        self.StackedWidget_ExecAndStop.addWidget(self.StackedWidget_Page_Stop)
-
-        self.horizontalLayout_2.addWidget(self.StackedWidget_ExecAndStop)
 
         self.horizontalSpacer = QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -209,16 +145,18 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
 
+        self.ProgressBar_Exec = ProgressBarBase(self.content)
+        self.ProgressBar_Exec.setObjectName(u"ProgressBar_Exec")
+
+        self.gridLayout.addWidget(self.ProgressBar_Exec, 2, 0, 1, 2)
+
         self.gridLayout_4 = QGridLayout()
         self.gridLayout_4.setSpacing(12)
         self.gridLayout_4.setObjectName(u"gridLayout_4")
         self.LineEdit_pcSaveLoc = LineEditBase(self.content)
         self.LineEdit_pcSaveLoc.setObjectName(u"LineEdit_pcSaveLoc")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.LineEdit_pcSaveLoc.sizePolicy().hasHeightForWidth())
-        self.LineEdit_pcSaveLoc.setSizePolicy(sizePolicy4)
+        sizePolicy1.setHeightForWidth(self.LineEdit_pcSaveLoc.sizePolicy().hasHeightForWidth())
+        self.LineEdit_pcSaveLoc.setSizePolicy(sizePolicy1)
         self.LineEdit_pcSaveLoc.setMinimumSize(QSize(210, 0))
 
         self.gridLayout_4.addWidget(self.LineEdit_pcSaveLoc, 0, 1, 2, 1)
@@ -226,9 +164,9 @@ class Ui_MainWindow(object):
         self.Button_ViewOutput = ButtonBase(self.content)
         self.Button_ViewOutput.setObjectName(u"Button_ViewOutput")
         self.Button_ViewOutput.setMaximumSize(QSize(30, 30))
-        icon4 = QIcon()
-        icon4.addFile(u":/Button_Icon/images/icons/OpenedFolder.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.Button_ViewOutput.setIcon(icon4)
+        icon1 = QIcon()
+        icon1.addFile(u":/Button_Icon/images/icons/OpenedFolder.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.Button_ViewOutput.setIcon(icon1)
 
         self.gridLayout_4.addWidget(self.Button_ViewOutput, 0, 2, 2, 1)
 
@@ -240,15 +178,14 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addLayout(self.gridLayout_4, 0, 1, 1, 1)
 
-        self.Table = Table_ViewTasks(self.content)
-        self.Table.setObjectName(u"Table")
+        self.gridLayout_2 = QGridLayout()
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout.addWidget(self.Table, 1, 0, 1, 2)
+        self.gridLayout_2.addItem(self.verticalSpacer, 0, 0, 1, 1)
 
-        self.ProgressBar_Exec = ProgressBarBase(self.content)
-        self.ProgressBar_Exec.setObjectName(u"ProgressBar_Exec")
 
-        self.gridLayout.addWidget(self.ProgressBar_Exec, 2, 0, 1, 2)
+        self.gridLayout.addLayout(self.gridLayout_2, 1, 0, 1, 2)
 
 
         self.gridLayout_5.addWidget(self.content, 1, 0, 1, 1)
@@ -257,9 +194,6 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.StackedWidget_ExecAndStop.setCurrentIndex(0)
-
-
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
@@ -267,3 +201,4 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.Label_pcSaveLoc.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
     # retranslateUi
+

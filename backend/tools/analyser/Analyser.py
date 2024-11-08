@@ -28,6 +28,8 @@ def save_images(
         if not ret:
             break  # Break the loop if there are no frames left to read
 
+        timeStamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
+
         # 检查花屏
         lst_outputH:List[str] = []
         if 'bChkH' in chkTypes:
@@ -39,7 +41,7 @@ def save_images(
                 lst_outputH.append(file)
             UpdateDict(
                 Dict1 = result,
-                Dict2 = {'lst_outputH': lst_outputH}
+                Dict2 = {'lst_outputH': [timeStamp]} #Dict2 = {'lst_outputH': lst_outputH}
             )
 
         # 检查黑白
@@ -65,7 +67,7 @@ def save_images(
                 pass
             UpdateDict(
                 Dict1 = result,
-                Dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
+                Dict2 = {'lst_outputB': [timeStamp], 'lst_outputW': [timeStamp]} #Dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
             )
 
         # 分屏+检查黑白
@@ -106,7 +108,7 @@ def save_images(
                                 lst_outputSplitB.append(file)
             UpdateDict(
                 Dict1 = result,
-                Dict2 = {'lst_outputSplitB': lst_outputSplitB}
+                Dict2 = {'lst_outputSplitB': [timeStamp]} #Dict2 = {'lst_outputSplitB': lst_outputSplitB}
             )
 
         # 无bar分屏+检查黑白
@@ -117,7 +119,7 @@ def save_images(
                 lst_outputNobarSplitB.append(file)
             UpdateDict(
                 Dict1 = result,
-                Dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
+                Dict2 = {'lst_outputNobarSplitB': [timeStamp]} #Dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
             )
 
         # 桌面来电底色
@@ -128,7 +130,7 @@ def save_images(
                 lst_outputBlackback.append(file)
             UpdateDict(
                 Dict1 = result,
-                Dict2 = {'lst_outputBlackback': lst_outputBlackback}
+                Dict2 = {'lst_outputBlackback': [timeStamp]} #Dict2 = {'lst_outputBlackback': lst_outputBlackback}
             )
 
         frame_count += 1

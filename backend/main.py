@@ -103,23 +103,6 @@ async def execute_analyser(request: Request):
     return {'message': result}
 
 
-@app.post('/execute')
-async def execute(request: Request):
-    data = await request.json()
-    caseCMD = data.get('caseCMD')
-    saveDir_PC = data.get('saveDir_PC')
-    chkTypes = data.get('chkTypes')
-    outputFolder = data.get('output_folder')
-    result = await asyncio.to_thread(Exec,
-        caseCMD,
-        saveDir_PC,
-        chkTypes,
-        outputFolder,
-        modelDir,
-    )
-    return {'message': result}
-
-
 @app.post('/stop')
 async def stop():
     global stopAllEvent
