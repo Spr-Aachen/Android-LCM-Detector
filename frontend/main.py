@@ -350,6 +350,7 @@ class MainWindow(Window_MainWindow):
         )
         self.Thread.dictReceived.connect(
             lambda dict, isSucceeded: (
+                MessageBoxBase.pop(self, WindowTitle = 'Tip', Text = '执行成功' if isSucceeded else '执行失败', DetailedText = str(dict)),
                 self.ui.ProgressBar_Exec.setRange(0, 100),
                 self.ui.ProgressBar_Exec.setValue(100),
                 self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
@@ -366,7 +367,7 @@ class MainWindow(Window_MainWindow):
             dir = "",
             filter = "Video Files (*.mp4 *.avi *.mkv *.flv)"
         )
-        if filePath is None:
+        if len(filePath.strip()) == 0:
             return
         if self.Thread is not None and self.Thread.isRunning():
             self.Thread.terminate()
