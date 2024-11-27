@@ -1,18 +1,65 @@
 import os, sys
 import subprocess
 import threading
+from typing import Optional
 
 from pathlib import Path
 current_dir = Path(__file__).absolute().parent.as_posix()
 sys.path.insert(0, f"{current_dir}")
 os.chdir(current_dir)
 
-from .recorder.Recorder import *
-from .analyser.Analyser import *
+from . import recorder
+from . import analyser
 
 ##############################################################################################################################
 
-def Exec(
+stopRecordEvent = threading.Event()
+stopAllEvent = threading.Event()
+def recordAndPull(
+    savePath_AD: str,
+    saveDir_PC: str,
+    chkTypes: list,
+    outputFolder: str,
+    modelDir: str,
+    toOnnx: bool = False,
+    recPeriod: int = 180,
+    sn: Optional[str] = None,
+):
+    global stopRecordEvent
+    global stopAllEvent
+    i = 0
+    analysingThreads = []
+    while not (stopRecordEvent.is_set() or stopAllEvent.is_set()):
+        try:
+            recorder.record(savePath_AD, saveDir_PC, recPeriod, sn)
+            i += 1
+            OldName = Path(saveDir_PC).joinpath(Path(savePath_AD).name).as_posix()
+            NewName = Path(saveDir_PC).joinpath(f"{i}{Path(savePath_AD).suffix}").as_posix()
+            if Path(OldName).exists():
+                if Path(NewName).exists():
+                    os.remove(NewName)
+                os.rename(OldName, NewName)
+        except Exception as e:
+            print(f"recordAndPull error: {e}")
+        finally:
+            if not Path(NewName).exists():
+                continue
+            analysingThread = threading.Thread(
+                target = analyser.videoAnalyse,
+                args = (NewName, chkTypes, outputFolder, modelDir, toOnnx, stopAllEvent)
+            )
+            analysingThreads.append(analysingThread)
+            analysingThread.start()
+    else:
+        if not stopAllEvent.is_set():
+            for analysingThread in analysingThreads:
+                try:
+                    analysingThread.join()
+                except:
+                    pass
+
+
+def exec(
     taskCMD: str,
     saveDir_PC: str,
     chkTypes: list,
@@ -36,22 +83,20 @@ def Exec(
     Returns:
         result (dict): 检测结果
     """
-    global adbRecord
     global stopRecordEvent
     global stopAllEvent
-    global result
 
     # Set the save location
     SavePath_AD = "/sdcard/testcase.mp4"
     Path(saveDir_PC).mkdir(parents = True) if not Path(saveDir_PC).exists() else None
 
     # Reboot server
-    adbReboot = reboot()
+    adbReboot = recorder.reboot()
     adbReboot.wait()
 
     # Start the screen recording thread
     recordingThread = threading.Thread(
-        target = RecordAndPull,
+        target = recordAndPull,
         args = (SavePath_AD, saveDir_PC, chkTypes, outputFolder, modelDir, toOnnx, recPeriod, sn)
     )
     recordingThread.start()
@@ -70,10 +115,10 @@ def Exec(
 
     # Signal the recording thread to stop and wait for it to finish
     stopRecordEvent.set()
-    if adbRecord is not None:
-        adbRecord.terminate()
+    if recorder.adbRecord is not None:
+        recorder.adbRecord.terminate()
     recordingThread.join()
 
-    return result
+    return analyser.result
 
 ##############################################################################################################################

@@ -5,8 +5,8 @@ from PySide6.QtGui import *
 from PySide6.QtWidgets import *
 from QEasyWidgets import QFunctions as QFunc
 
-from components.Components import *
-from windows.Windows import *
+from components.components import *
+from windows.windows import *
 
 ##############################################################################################################################
 
@@ -39,16 +39,16 @@ def Function_ConfigureCheckBox(
         UncheckedEvents.append(lambda: CheckBox.setText(UncheckedText))
 
     CheckBox.toggled.connect(
-        lambda IsChecked: QFunc.RunEvents(CheckedEvents if IsChecked else UncheckedEvents)
+        lambda IsChecked: QFunc.runEvents(CheckedEvents if IsChecked else UncheckedEvents)
     )
 
-    QFunc.RunEvents(CheckedEvents) if TakeEffect and CheckBox.isChecked() else None
-    QFunc.RunEvents(UncheckedEvents) if TakeEffect and not CheckBox.isChecked() else None
+    QFunc.runEvents(CheckedEvents) if TakeEffect and CheckBox.isChecked() else None
+    QFunc.runEvents(UncheckedEvents) if TakeEffect and not CheckBox.isChecked() else None
 
 
 def Function_SetWidgetValue(
     Widget: QWidget,
-    Config: QFunc.ManageConfig,
+    Config: QFunc.configManager,
     Section: str = ...,
     Option: str = ...,
     Value = ...,
@@ -57,7 +57,7 @@ def Function_SetWidgetValue(
     PlaceholderText: Optional[str] = None
 ):
     if isinstance(Widget, (QLineEdit, QTextEdit, QPlainTextEdit)):
-        QFunc.Function_SetText(Widget, Value, SetPlaceholderText = SetPlaceholderText, PlaceholderText = PlaceholderText)
+        QFunc.setText(Widget, Value, setPlaceholderText = SetPlaceholderText, placeholderText = PlaceholderText)
         def EditConfig(Value):
             Config.editConfig(Section, Option, str(Value))
         if Config is not None:
@@ -102,53 +102,53 @@ def Function_SetWidgetValue(
 
 class ParamsManager:
     def __init__(self,
-        ConfigPath: str,
+        configPath: str,
     ):
-        self.ConfigPath = ConfigPath
-        self.Config = QFunc.ManageConfig(ConfigPath)
+        self.configPath = configPath
+        self.config = QFunc.configManager(configPath)
 
         self.RegistratedWidgets = {}
 
-    def Registrate(self, Widget: QWidget, value: tuple):
-        self.RegistratedWidgets[Widget] = value
+    def registrate(self, widget: QWidget, value: tuple):
+        self.RegistratedWidgets[widget] = value
 
     def SetParam(self,
-        Widget: QWidget,
-        Section: str = ...,
-        Option: str = ...,
-        DefaultValue = None,
-        Times: Union[int, float] = 1,
-        SetPlaceholderText: bool = False,
-        PlaceholderText: Optional[str] = None,
-        Registrate: bool = True
+        widget: QWidget,
+        section: str = ...,
+        option: str = ...,
+        defaultValue = None,
+        times: Union[int, float] = 1,
+        setPlaceholderText: bool = False,
+        placeholderText: Optional[str] = None,
+        registrate: bool = True
     ):
-        Value = self.Config.getValue(Section, Option, str(DefaultValue))
-        Function_SetWidgetValue(Widget, self.Config, Section, Option, Value, Times, SetPlaceholderText, PlaceholderText)
-        self.Registrate(Widget, (Section, Option, DefaultValue, Times, SetPlaceholderText, PlaceholderText)) if Registrate else None
+        value = self.config.getValue(section, option, str(defaultValue))
+        Function_SetWidgetValue(widget, self.config, section, option, value, times, setPlaceholderText, placeholderText)
+        self.registrate(widget, (section, option, defaultValue, times, setPlaceholderText, placeholderText)) if registrate else None
 
-    def ResetParam(self, Widget: QWidget):
-        value = self.RegistratedWidgets[Widget]
-        Function_SetWidgetValue(Widget, self.Config, *value)
+    def ResetParam(self, widget: QWidget):
+        value = self.RegistratedWidgets[widget]
+        Function_SetWidgetValue(widget, self.config, *value)
 
     def ClearSettings(self):
-        with open(self.ConfigPath, 'w'):
+        with open(self.configPath, 'w'):
             pass
-        self.Config = QFunc.ManageConfig(self.ConfigPath)
+        self.config = QFunc.configManager(self.configPath)
 
     def ResetSettings(self):
         self.ClearSettings()
-        for Widget in list(self.RegistratedWidgets.keys()):
-            self.ResetParam(Widget)
+        for widget in list(self.RegistratedWidgets.keys()):
+            self.ResetParam(widget)
 
-    def ImportSettings(self, ReadPath: str):
-        ConfigParser = QFunc.ManageConfig(ReadPath).parser()
-        with open(self.ConfigPath, 'w', encoding = 'utf-8') as Config:
-            ConfigParser.write(Config)
-        for Widget, value in list(self.RegistratedWidgets.items()):
-            self.SetParam(Widget, *value)
+    def ImportSettings(self, readPath: str):
+        configParser = QFunc.configManager(readPath).parser()
+        with open(self.configPath, 'w', encoding = 'utf-8') as config:
+            configParser.write(config)
+        for widget, value in list(self.RegistratedWidgets.items()):
+            self.SetParam(widget, *value)
 
-    def ExportSettings(self, SavePath: str):
-        with open(SavePath, 'w', encoding = 'utf-8') as Config:
-            self.Config.parser().write(Config)
+    def ExportSettings(self, savePath: str):
+        with open(savePath, 'w', encoding = 'utf-8') as config:
+            self.config.parser().write(config)
 
 ##############################################################################################################################

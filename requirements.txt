@@ -3,9 +3,8 @@ uvicorn
 numpy
 opencv-python
 ultralytics
+av==11.0.0
 colorama
 
 PySide6
-fastexcel
-polars
-sqlalchemy
+QEasyWidgets

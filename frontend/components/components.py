@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import *
 from QEasyWidgets.Components import *
 
-from assets.Sources import *
+from assets.sources import *
 
 ##############################################################################################################################
 

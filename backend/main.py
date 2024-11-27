@@ -13,15 +13,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from typing import List
 
-from tools.Exec import videoAnalyser, Exec, stopAllEvent
+from tools import analyser, recorder, stopAllEvent
 
 ##############################################################################################################################
 
 # 启动参数解析，启动环境，应用端口由命令行传入
 parser = argparse.ArgumentParser()
-parser.add_argument("--modeldir", help = "models目录", type = str, default = './models')
+parser.add_argument("--host",     help = "主机",       type = str, default = "localhost")
+parser.add_argument("--port",     help = "端口",       type = int, default = 80)
+parser.add_argument("--modeldir", help = "models目录", type = str, default = "./models")
 args = parser.parse_args()
 
+host = args.host
+port = args.port
 modelDir = args.modeldir
 
 ##############################################################################################################################
@@ -40,16 +44,20 @@ app.add_middleware(
 )
 
 
-# 定义写入大小
-CHUNK_SIZE = 1024 * 1024
+# Get current root
+currentRoot = Path(sys.argv[0]).root
 
 
 # 上传文件存储目录
-UPLOAD_DIR = "./uploads"
+UPLOAD_DIR = Path(currentRoot).joinpath('uploads').as_posix()
 
 
 # 输出文件存储目录
-OUTPUT_DIR = "./outputs"
+OUTPUT_DIR = Path(currentRoot).joinpath('outputs').as_posix()
+
+
+# 定义写入大小
+CHUNK_SIZE = 1024 * 1024
 
 
 async def write_file(filePath, source: UploadFile):
@@ -70,8 +78,12 @@ async def upload_file(files: List[UploadFile]):
     for file in files:
         filePath = Path(UPLOAD_DIR).joinpath(file.filename).as_posix()
         os.remove(filePath) if Path(filePath).exists() else None
-        write_file(filePath, file)
-        return {"filename": file.filename, "status": "Succeeded"}
+        '''
+        task = asyncio.create_task(write_file(filePath, file))
+        asyncio.get_event_loop().run_until_complete(task)
+        '''
+        await write_file(filePath, file)
+    return {"status": "Succeeded"}
 
 
 @app.post('/execute_analyser')
@@ -79,12 +91,11 @@ async def execute_analyser(request: Request):
     data = await request.json()
     fileName = data.get('fileName')
     chkTypes = data.get('chkTypes')
-    result = await asyncio.to_thread(videoAnalyser,
+    await asyncio.to_thread(analyser.videoAnalyse,
         videoPath = Path(UPLOAD_DIR).joinpath(fileName).as_posix(),
         chkTypes = chkTypes,
         outputFolder = OUTPUT_DIR,
         modelDir = modelDir,
-        toOnnx = False,
         stopEvent = stopAllEvent
     )
     '''
@@ -100,7 +111,7 @@ async def execute_analyser(request: Request):
         media_type = "application/x-zip-compressed", 
     )
     '''
-    return {'message': result}
+    return {'result': analyser.result}
 
 
 @app.post('/stop')
@@ -128,8 +139,8 @@ async def shutdown():
 if __name__ == '__main__':
     uvicorn.run(
         app = app,
-        host = 'localhost',
-        port = 8080
+        host = host,
+        port = port
     )
 
 ##############################################################################################################################

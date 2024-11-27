@@ -5,7 +5,7 @@ import sys
 import argparse
 import json
 import requests
-import polars
+import requests_toolbelt
 from pathlib import Path
 from typing import Optional
 from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
@@ -13,28 +13,28 @@ from PySide6.QtWidgets import *
 from QEasyWidgets import ComponentsSignals, Theme, EasyTheme, IconBase
 from QEasyWidgets import QFunctions as QFunc
 
-from windows.Windows import *
+from windows.windows import *
 from functions import *
-from config import CurrentDir, ResourceDir
+from config import currentDir, resourceDir
 
 ##############################################################################################################################
 
 # 启动参数解析，启动环境，应用端口由命令行传入
 parser = argparse.ArgumentParser()
-parser.add_argument("--profiledir", help = "配置目录", type = str, default = Path(CurrentDir).joinpath('Profile').as_posix())
+parser.add_argument("--profiledir", help = "配置目录", type = str, default = Path(currentDir).joinpath('Profile').as_posix())
 args = parser.parse_args()
 
-ProfileDir = args.profiledir
-ConfigDir = Path(ProfileDir).joinpath('Config').as_posix()
+profileDir = args.profiledir
+configDir = Path(profileDir).joinpath('config').as_posix()
 
 ##############################################################################################################################
 
 TypeDict = {
-    '检查花屏': 'chkHua',
-    '检查黑白': 'chkB_ok_W',
-    '分屏+检查黑白': 'chkSplit_then_BokW',
-    '无bar分屏+检查黑白': 'chkNobarSplit_then_BW',
-    '桌面来电底色': 'chkBlackback'
+    '检查花屏': 'bChkH',
+    '检查黑白': 'bChkBW',
+    '分屏+检查黑白': 'bChkSplit_then_BW',
+    '无bar分屏+检查黑白': 'bChkNobarSplit_then_BW',
+    '桌面来电底色': 'bChkBlackback'
 }
 
 
@@ -45,12 +45,21 @@ def Upload(
     filePaths: Union[list, str] = ...,
 ):
     URL = f"{protocol}://{ip}:{port}/upload"
-    files = [{"file": (Path(filePath).name, open(filePath, "rb"), 'application/json')} for filePath in QFunc.ToIterable(filePaths)]
-    response = requests.post(
-        url = URL,
-        files = files
+    fields = [("files", (Path(filePath).name, open(filePath, 'rb'), )) for filePath in QFunc.toIterable(filePaths)]
+    data = requests_toolbelt.MultipartEncoderMonitor(
+        requests_toolbelt.MultipartEncoder(fields),
+        lambda monitor: print(f"上传进度: {monitor.bytes_read/monitor.len*100:.2f}%")
     )
-    return json.loads(response.text) if response.status_code == 200 else "文件上传失败", response.status_code
+    headers = {
+        "Connection": "keep-alive",
+        'Content-Type': data.content_type
+    }
+    with requests.post(
+        url = URL,
+        data = data,
+        headers = headers
+    ) as response:
+        return json.loads(response.text) if response.status_code == 200 else "文件上传失败", response.status_code
 
 
 class Thread_Upload(QThread):
@@ -58,21 +67,21 @@ class Thread_Upload(QThread):
         protocol: str = 'http',
         ip: str = 'localhost',
         port: int = 8080,
-        filePath: str = ...
+        filePaths: str = ...
     ):
         super().__init__()
 
         self.protocol = protocol
         self.ip = ip
         self.port = port
-        self.filePath = filePath
+        self.filePaths = filePaths
 
     def run(self):
         result, statuscode = Upload(
             protocol = self.protocol,
             ip = self.ip,
             port = self.port,
-            filePath = self.filePath
+            filePaths = self.filePaths
         )
 
 
@@ -98,7 +107,7 @@ def ExecuteAnalyser(
                     content = chunk.decode('utf-8', errors = 'ignore')
                     try:
                         parsed_content = json.loads(content)
-                        result = parsed_content['message']
+                        result = parsed_content['result']
                         return result, response.status_code
                     except:
                         continue
@@ -202,15 +211,13 @@ class MainWindow(Window_MainWindow):
         )
         self.Thread.dictReceived.connect(
             lambda dict, isSucceeded: (
-                MessageBoxBase.pop(self, WindowTitle = 'Tip', Text = '执行成功' if isSucceeded else '执行失败', DetailedText = str(dict)),
                 self.ui.ProgressBar_Exec.setRange(0, 100),
                 self.ui.ProgressBar_Exec.setValue(100),
-                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
+                MessageBoxBase.pop(self, windowTitle = 'Tip', text = '执行成功' if isSucceeded else '执行失败', detailedText = str(dict)),
             )
         )
         self.Thread.start()
         self.ui.ProgressBar_Exec.setRange(0, 0)
-        self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Stop)
 
     def upload_file(self):
         # 弹出文件选择对话框
@@ -248,7 +255,6 @@ class MainWindow(Window_MainWindow):
             lambda: (
                 self.ui.ProgressBar_Exec.setRange(0, 100),
                 self.ui.ProgressBar_Exec.setValue(0),
-                self.ui.StackedWidget_ExecAndStop.setCurrentWidget(self.ui.StackedWidget_Page_Exec)
             )
         )
         self.Thread.start()
@@ -263,7 +269,7 @@ class MainWindow(Window_MainWindow):
 
     def Main(self):
         # ParamsManager
-        configPath = QFunc.NormPath(Path(ConfigDir).joinpath('config.ini'))
+        configPath = QFunc.normPath(Path(configDir).joinpath('config.ini'))
         paramsManager = ParamsManager(configPath)
 
         # Theme toggler
@@ -275,11 +281,11 @@ class MainWindow(Window_MainWindow):
         Function_ConfigureCheckBox(
             CheckBox = self.ui.CheckBox_SwitchTheme,
             CheckedEvents = [
-                lambda: paramsManager.Config.editConfig('Settings', 'Theme', Theme.Light),
+                lambda: paramsManager.config.editConfig('Settings', 'Theme', Theme.Light),
                 lambda: ComponentsSignals.Signal_SetTheme.emit(Theme.Light) if EasyTheme.THEME != Theme.Light else None
             ],
             UncheckedEvents = [
-                lambda: paramsManager.Config.editConfig('Settings', 'Theme', Theme.Dark),
+                lambda: paramsManager.config.editConfig('Settings', 'Theme', Theme.Dark),
                 lambda: ComponentsSignals.Signal_SetTheme.emit(Theme.Dark) if EasyTheme.THEME != Theme.Dark else None
             ],
             TakeEffect = False
@@ -305,20 +311,20 @@ class MainWindow(Window_MainWindow):
         self.ui.Button_Minimize_Window.setIcon(IconBase.Dash)
 
         # Logo
-        self.setWindowIcon(QIcon(QFunc.NormPath(Path(CurrentDir).joinpath('assets/images/Logo.ico'))))
+        self.setWindowIcon(QIcon(QFunc.normPath(Path(currentDir).joinpath('assets/images/Logo.ico'))))
 
         self.setWindowTitle("Analyser")
 
         self.ui.Label_pcSaveLoc.setText('输出位置')
         self.ui.LineEdit_pcSaveLoc.setFileDialog(
-            Mode = "SelectFolder",
-            Directory = Path(CurrentDir).anchor
+            mode = "SelectFolder",
+            directory = Path(currentDir).anchor
         )
         paramsManager.SetParam(
-            Widget = self.ui.LineEdit_pcSaveLoc,
-            Section = 'Input Params',
-            Option = 'OutputDir',
-            DefaultValue = QFunc.NormPath(Path(Path(CurrentDir).anchor).joinpath('vids'))
+            widget = self.ui.LineEdit_pcSaveLoc,
+            section = 'Input Params',
+            option = 'OutputDir',
+            defaultValue = QFunc.normPath(Path(Path(currentDir).anchor).joinpath('vids'))
         )
 
         self.ui.Button_UploadFile.setText("上传视频文件")
@@ -329,7 +335,7 @@ class MainWindow(Window_MainWindow):
         #self.ui.Button_ViewOutput.clicked.connect(self.checkOutput)
 
         # Set theme
-        ComponentsSignals.Signal_SetTheme.emit(paramsManager.Config.getValue('Settings', 'Theme', Theme.Auto))
+        ComponentsSignals.Signal_SetTheme.emit(paramsManager.config.getValue('Settings', 'Theme', Theme.Auto))
 
         # Show window
         self.show()

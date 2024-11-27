@@ -23,11 +23,11 @@ def run(
     BackendDir = Path(f'{resourceDir}{os.sep}backend').as_posix()
     backendFile = Path(f'{BackendDir}{os.sep}main.py').as_posix()
     backendCMD = f'python "{backendFile}" --modeldir "{ModelDir}"'
-    Popen(backendCMD, shell = True)
+    Popen(backendCMD)
     FrontendDir = Path(f'{resourceDir}{os.sep}frontend').as_posix()
     FrontendFile = Path(f'{FrontendDir}{os.sep}main.py').as_posix()
     frontendCMD = f'python "{FrontendFile}" --profile "{ProfileDir}"'
-    Popen(frontendCMD, shell = True)
+    Popen(frontendCMD)
 
 ##############################################################################################################################
 

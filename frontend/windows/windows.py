@@ -3,7 +3,7 @@ from PySide6.QtGui import QPixmap, QResizeEvent, QImage
 from PySide6.QtWidgets import *
 from QEasyWidgets.Windows import *
 
-from components.Components import *
+from components.components import *
 from windows.ui.UI_Window import *
 
 ##############################################################################################################################

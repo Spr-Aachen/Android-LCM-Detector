@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtCore import QCoreApplication, QMetaObject, QRect, QSize
 from PySide6.QtWidgets import *
 
-from components.Components import *
+from components.components import *
 
 
 class Ui_MainWindow(object):
