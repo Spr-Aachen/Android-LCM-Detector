@@ -47,6 +47,13 @@ transform = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
+
+transform2pic = transforms.Compose([
+    transforms.Resize((640, 1280)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
 ##############################################################################################################################
 
 def loadModel(modelPath: str, classes: list):
@@ -67,7 +74,7 @@ def loadModel(modelPath: str, classes: list):
 
 def predict1_image_num(model: torchvision.models.EfficientNet, image_path = ...) -> int:
     image = Image.open(image_path).convert('RGB')
-    image = transform(image).unsqueeze(0).to(device)
+    image = transform2pic(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
         outputs = model(image)
@@ -78,7 +85,7 @@ def predict1_image_num(model: torchvision.models.EfficientNet, image_path = ...)
 
 def predict2_image_str(model: torchvision.models.EfficientNet, image_path = ...) -> str:
     image = Image.open(image_path).convert('RGB')
-    image = transform(image).unsqueeze(0).to(device)
+    image = transform2pic(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
         outputs = model(image)
@@ -128,64 +135,95 @@ predictResult = {}
 def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
     global predictResult
 
-    lst_all_type = [predict1_image_num(model1, pic.as_posix()) for pic in Path(outputFolder).glob('*.jpg')]
+    lst_all_type = [predict1_image_num(model1, pic.as_posix()) for pic in getFiles(outputFolder, ('.jpg', '.png'))]
     #print(Fore.GREEN + 'lst_all_type:' + Fore.RESET, lst_all_type)
 
+    b_found_err_before :bool = False
+
     if 'bChkGlich' in chkTypes:
+        '''
         lst_tup_seq_glich = find_cons_seq(lst_all_type, target=5, min_length=1)
 
         for start, end in lst_tup_seq_glich:
             lst_output_glich = []
             for i in range(start, end):
                 lst_output_glich.append(i)
-            UpdateDict(
+            updateDict(
                 Dict1 = predictResult,
                 Dict2 = {'lst_output_glich': lst_output_glich}
             ) if lst_output_glich.__len__() > 0 else None
+        if len(lst_output_glich) > 0:
+            print(Fore.RED, 'in 5.hua IDX:', lst_output_glich, Fore.RESET)
+            b_found_err_before = True
+        '''
+        # [2024-11-23] 由于model1添加了hua类型,所以需要调整
+        # 之前的类型5,half_quarter_black,现在改为hua
+        lst_output_glich = []
+        for i, type in enumerate(lst_all_type):
+            if type == 5: 
+                lst_output_glich.append(i)
+        if len(lst_output_glich) > 0:
+            print(Fore.RED, 'in 5.hua IDX:', lst_output_glich, Fore.RESET)
+            b_found_err_before = True
+            updateDict(
+                Dict1 = predictResult,
+                Dict2 = {'lst_output_glich': lst_output_glich}
+            )
 
     if 'bChkFlick' in chkTypes:
+        # [2024-11-25] 测试发现,类型3的图片,desktop_black_half_etc
+        lst_output_flick = []
+        for i, type in enumerate(lst_all_type):
+            if type == 3: 
+                lst_output_flick.append(i)
+        if len(lst_output_flick) > 0:
+            print(Fore.RED, 'in 3.desktop_black_half_etc IDX:', lst_output_flick, Fore.RESET)
+            b_found_err_before = True
+            updateDict(
+                Dict1 = predictResult,
+                Dict2 = {'lst_output_glich': lst_output_flick}
+            )
+
         # 'camOn', #2
         # Find sequences of consecutive 'camOn' frames
         lst_tup_seq_camOn = find_cons_seq(lst_all_type, target=2, min_length=3)
-        # print(Fore.GREEN + f"Found {len(lst_tup_seq_camOn)} sequences of consecutive 'camOn' frames" + Fore.RESET)
-        # print(Fore.GREEN + f"camOn_sequences: {lst_tup_seq_camOn}" + Fore.RESET)
-        # lst_tup_seq_camOn = find_cons_seq(lst_all_type, target=2, min_length=3)
+        #print(Fore.GREEN + f"Found {len(lst_tup_seq_camOn)} sequences of consecutive 'camOn' frames" + Fore.RESET)
+        #print(Fore.GREEN + f"camOn_sequences: {lst_tup_seq_camOn}" + Fore.RESET)
+        #lst_tup_seq_camOn = find_cons_seq(lst_all_type, target=2, min_length=3)
         lst_tup_seq_floatWin = find_cons_seq(lst_all_type, target=4, min_length=3)
 
         for i, (start, end) in enumerate(lst_tup_seq_floatWin):
-            # 在这序列的end后面,有多少个连续的0
             # Count consecutive zeros after the sequence end
             zeros_count = 0
             curr_pos = end + 1
 
             # Check if next 5 frames are all zeros
-            skip = 0
+            # TODO:或者也可能是1.camOffWhite
             if curr_pos + 5 <= len(lst_all_type) and lst_all_type[curr_pos:curr_pos+5] == [0]*5:
                 zeros_count = 5
                 curr_pos += 5
                 skip = 5
                 print(Fore.RED + f"floatWin frame {start:04d} to {end:04d} Followed by {zeros_count} MORE cons zeros" + Fore.RESET)
+                b_found_err_before = True
             else:
                 print(Fore.BLUE + f"floatWin frame {start:04d} to {end:04d} Not followed by 5 cons zeros" + Fore.RESET)
-                # 考虑跳掉几帧,
-                try:
-                    if lst_all_type[end+4] == 0:
-                        skip = 4
-                    elif lst_all_type[end+3] == 0:
-                        skip = 3
-                    elif lst_all_type[end+2] == 0:
-                        skip = 2
-                    elif lst_all_type[end+1] == 0:
-                        skip = 1
-                except:
-                    pass
+                if len(lst_all_type) > end+4 and lst_all_type[end+4] == 0:
+                    skip = 4
+                elif len(lst_all_type) > end+3 and lst_all_type[end+3] == 0:
+                    skip = 3
+                elif len(lst_all_type) > end+2 and lst_all_type[end+2] == 0:
+                    skip = 2
+                elif len(lst_all_type) > end+1 and lst_all_type[end+1] == 0:
+                    skip = 1
+                else:
+                    skip = 0
 
             lst_output_flick = []
             # 对下一个range之间的其他类型,进行检测
             if i+1 < len(lst_tup_seq_floatWin):
                 next_start, next_end = lst_tup_seq_floatWin[i+1]
-                # next_type = lst_all_type[next_end]
-                # print(Fore.YELLOW + f"next_type: {class_names[next_type]}" + Fore.RESET)
+                #next_type = lst_all_type[next_end]
+                #print(Fore.YELLOW + f"next_type: {class_names[next_type]}" + Fore.RESET)
                 # 对下一个range之间的其他图像(是否要考虑类型问题),进行检测
                 for j in range(end+skip+1, next_start):
                     file1 = f"{j:04d}.jpg"
@@ -194,7 +232,8 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
                     if flick_type == 'Y':
                         print(Fore.RED, 'in 2 floatWin range:', f"{j:04d}_{j+1:04d}.jpg: {flick_type}", Fore.RESET)
                         lst_output_flick.extend([j, j+1])
-            UpdateDict(
+                        b_found_err_before = True
+            updateDict(
                 Dict1 = predictResult,
                 Dict2 = {'lst_output_flick': lst_output_flick}
             ) if lst_output_flick.__len__() > 0 else None
@@ -209,7 +248,8 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
                 if flick_type == 'Y':
                     print(Fore.RED, 'floatWin flicker:', f"{i:04d}_{i+1:04d}.jpg: {flick_type}", Fore.RESET)
                     lst_output_flick.extend([i, i+1])
-            UpdateDict(
+                    b_found_err_before = True
+            updateDict(
                 Dict1 = predictResult,
                 Dict2 = {'lst_output_flick': lst_output_flick}
             ) if lst_output_flick.__len__() > 0 else None
@@ -218,26 +258,29 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
         for start, end in lst_tup_seq_camOn:
             lst_output_flick = []
             for i in range(start, end):
-                # print(lst_all_type[i])
                 file1 = f"{i:04d}.jpg"
                 file2 = f"{i+1:04d}.jpg"
                 flick_type = merge_and_predict_flicker(model2, file1, file2, outputFolder, mergeFolder, i)
                 if flick_type == 'Y':
-                    print(f"{i:04d}_{i+1:04d}.jpg: {flick_type}")
+                    print(Fore.RED, f"{i:04d}_{i+1:04d}.jpg: {flick_type}", Fore.RESET)
                     lst_output_flick.extend([i, i+1])
-            UpdateDict(
+                    b_found_err_before = True
+            updateDict(
                 Dict1 = predictResult,
                 Dict2 = {'lst_output_flick': lst_output_flick}
             ) if lst_output_flick.__len__() > 0 else None
 
-        if len(lst_tup_seq_camOn) == 0 and len(lst_tup_seq_floatWin) == 0:
-            print(Fore.RED + 'No camOn2/floatWin4 found,check 6.other type', Fore.RESET)
-            # 没有找到camOn2/floatWin4,则需要考虑其他类型
-            # 例如883_Screen_Recording_20240507_111135,(notebook)fixed:现在全是类型6
-            # 这里有类型判断问题,需要考虑增加训练数据,other里面数据还是太少
-            # lst_all_type
-            # TODO: 假设这里对6进行全量检测
+        # NOTE:有camOn但没有问题,所以要检测其他类型,因此,这里if判断要拿掉
+        # if len(lst_tup_seq_camOn) == 0 and len(lst_tup_seq_floatWin) == 0: 
+        print(Fore.RED + 'No camOn2/floatWin4 found,check 6.other type', Fore.RESET)
+        # 没有找到camOn2/floatWin4,则需要考虑其他类型
+        # 例如883_Screen_Recording_20240507_111135,(notebook)fixed:现在全是类型6
+        # 这里有类型判断问题,需要考虑增加训练数据,other里面数据还是太少
+        # lst_flick_type
+        # 假设这里对6进行全量检测
+        if b_found_err_before == False:
             lst_tup_seq_other = find_cons_seq(lst_all_type, target=6, min_length=3)
+            print(Fore.GREEN + f"6.other range count: {len(lst_tup_seq_other)}" + Fore.RESET)
             for start, end in lst_tup_seq_other:
                 lst_output_flick = []
                 print(Fore.GREEN + f"6.other frames {start:04d} to {end:04d}" + Fore.RESET)
@@ -246,16 +289,19 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
                     file2 = f"{i+1:04d}.jpg"
                     flick_type = merge_and_predict_flicker(model2, file1, file2, outputFolder, mergeFolder, i)
                     if flick_type == 'Y':
-                        print(f"{i:04d}_{i+1:04d}.jpg: {flick_type}")
+                        print(Fore.RED, f"{i:04d}_{i+1:04d}.jpg: {flick_type}", Fore.RESET)
                         lst_output_flick.extend([i, i+1])
-                UpdateDict(
+                updateDict(
                     Dict1 = predictResult,
                     Dict2 = {'lst_output_flick': lst_output_flick}
                 ) if lst_output_flick.__len__() > 0 else None
 
+        print('\n')
 
+
+frameRate = 0
 def predict(
-    videoPath: str,
+    mediaPath: str,
     chkTypes: list,
     outputFolder: str,
     modelDir: str,
@@ -263,21 +309,21 @@ def predict(
 ):
     """
     """
-    global predictResult
+    global predictResult, frameRate
 
     predictResult.clear()
 
-    print(Fore.GREEN, 'analysis_video', videoPath, Style.RESET_ALL)
+    print(Fore.GREEN, 'analysis media', mediaPath, Style.RESET_ALL)
 
     # Set output dir
-    outputDir = Path(outputFolder).joinpath(Path(videoPath).stem)
+    outputDir = Path(outputFolder).joinpath(Path(mediaPath).stem)
 
     # Set extract folder
     extractFolder = outputDir.joinpath('extract').as_posix()
     shutil.rmtree(extractFolder, ignore_errors = True) if Path(extractFolder).exists() else None
     os.makedirs(extractFolder, exist_ok = True)
     # Extract frames
-    extract_frames(videoPath, extractFolder)
+    frameRate = extractFrames(mediaPath, extractFolder)
 
     # Set merge folder
     mergeFolder = outputDir.joinpath('merge').as_posix()

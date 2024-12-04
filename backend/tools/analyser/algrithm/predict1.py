@@ -35,7 +35,7 @@ def analyseFrame(
             file = save_image(timeStamp, frame, outputFolder, subdir)
             lst_outputH.append(file)
             print(Fore.RED, f"[花屏] 时间戳: {timeStamp}", Style.RESET_ALL)
-        UpdateDict(
+        updateDict(
             Dict1 = predictResult,
             Dict2 = {'lst_outputH': [timeStamp]} #Dict2 = {'lst_outputH': lst_outputH}
         )
@@ -64,7 +64,7 @@ def analyseFrame(
                 print(Fore.RED, f"[白屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         else:
             pass
-        UpdateDict(
+        updateDict(
             Dict1 = predictResult,
             Dict2 = {'lst_outputB': [timeStamp], 'lst_outputW': [timeStamp]} #Dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
         )
@@ -107,7 +107,7 @@ def analyseFrame(
                             file = save_image(timeStamp, frame, outputFolder, subdir)
                             lst_outputSplitB.append(file)
                             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
-        UpdateDict(
+        updateDict(
             Dict1 = predictResult,
             Dict2 = {'lst_outputSplitB': [timeStamp]} #Dict2 = {'lst_outputSplitB': lst_outputSplitB}
         )
@@ -119,7 +119,7 @@ def analyseFrame(
             file = save_image(timeStamp, frame, outputFolder, subdir)
             lst_outputNobarSplitB.append(file)
             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
-        UpdateDict(
+        updateDict(
             Dict1 = predictResult,
             Dict2 = {'lst_outputNobarSplitB': [timeStamp]} #Dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
         )
@@ -131,7 +131,7 @@ def analyseFrame(
             file = save_image(timeStamp, frame, outputFolder, subdir)
             lst_outputBlackback.append(file)
             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
-        UpdateDict(
+        updateDict(
             Dict1 = predictResult,
             Dict2 = {'lst_outputBlackback': [timeStamp]} #Dict2 = {'lst_outputBlackback': lst_outputBlackback}
         )
@@ -155,30 +155,31 @@ class YOLOManager:
         gc.collect()
 
 
+frameRate = 0
 def predict(
-    videoPath: str,
+    mediaPath: str,
     chkTypes: list,
     outputFolder: str,
     modelDir: str,
     stopEvent: Optional[threading.Event] = None
 ):
     """
-    检测屏幕录像
+    检测屏幕录像/图像
     Args:
-        videoPath (str): 录像文件路径
+        mediaPath (str): 录像/图像文件路径
         chkTypes (list): 检测类型
         outputFolder (str): 结果输出路径
         modelDir (str): 模型路径
         stopEvent (threading.Event): 结束信号
     """
-    global predictResult
+    global predictResult, frameRate
 
     predictResult.clear()
 
-    print(Fore.GREEN, 'analysis_video', videoPath, chkTypes, Style.RESET_ALL)
+    print(Fore.GREEN, 'analysis media', mediaPath, chkTypes, Style.RESET_ALL)
 
     # 加载视频流
-    cap = cv2.VideoCapture(0 if videoPath is None else videoPath, cv2.CAP_FFMPEG)
+    cap = cv2.VideoCapture(0 if mediaPath is None else mediaPath, cv2.CAP_FFMPEG)
 
     # Setup the YOLO models' paths
     model_cls_path = Path(modelDir).joinpath('models_cls_videoHua.pt').as_posix()

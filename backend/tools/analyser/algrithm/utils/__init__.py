@@ -6,7 +6,14 @@ from .cv import *
 
 ##############################################################################################################################
 
-def UpdateDict(Dict1, Dict2):
+def getFiles(dir, extensions):
+    matchedFiles = []
+    for extension in extensions:
+        matchedFiles.extend(Path(dir).glob(f'*{extension}'))
+    return matchedFiles
+
+
+def updateDict(Dict1, Dict2):
     for key, value in Dict2.items():
         if key in Dict1:
             Dict1[key] += value

@@ -1,1 +1,1 @@
-from .analyse import analyserVersion, videoAnalyse, result
+from .analyse import analyserVersion, mediaAnalyse, result

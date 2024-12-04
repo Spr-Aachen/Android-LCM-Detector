@@ -91,7 +91,7 @@ async def execute_analyser(request: Request):
     data = await request.json()
     fileName = data.get('fileName')
     chkTypes = data.get('chkTypes')
-    await asyncio.to_thread(analyser.videoAnalyse,
+    await asyncio.to_thread(analyser.mediaAnalyse,
         videoPath = Path(UPLOAD_DIR).joinpath(fileName).as_posix(),
         chkTypes = chkTypes,
         outputFolder = OUTPUT_DIR,

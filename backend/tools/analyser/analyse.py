@@ -10,8 +10,8 @@ class analyserVersion:
 
 
 result = {}
-def videoAnalyse(
-    videoPath: str,
+def mediaAnalyse(
+    mediaPath: str,
     chkTypes: list,
     outputFolder: str,
     modelDir: str,
@@ -19,9 +19,9 @@ def videoAnalyse(
     version: analyserVersion = analyserVersion.V2
 ):
     """
-    检测屏幕录像
+    检测屏幕录像/图像
     Args:
-        videoPath (str): 录像文件路径
+        mediaPath (str): 录像/图像文件路径
         chkTypes (list): 检测类型
         outputFolder (str): 结果输出路径
         modelDir (str): 模型路径
@@ -37,7 +37,8 @@ def videoAnalyse(
     if version == analyserVersion.V2:
         from .algrithm import predict2 as predict
 
-    predict.predict(videoPath, chkTypes, outputFolder, modelDir, stopEvent)
+    predict.predict(mediaPath, chkTypes, outputFolder, modelDir, stopEvent)
     result.update(predict.predictResult)
+    return result, predict.frameRate
 
 ##############################################################################################################################
