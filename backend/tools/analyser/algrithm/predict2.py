@@ -4,12 +4,9 @@ import shutil
 import torch
 import torch.nn as nn
 from torchvision import transforms, models
-from PIL import Image
 import torchvision
 from typing import List, Dict, Optional
-from concurrent.futures import ThreadPoolExecutor
 from colorama import Fore, Style
-from datetime import datetime
 from pathlib import Path
 
 from .utils import *
@@ -41,24 +38,24 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # Define transformations - same as training
-transform = transforms.Compose([
+transform_normalize = transforms.Compose([
     transforms.Resize((640, 640)),
-    transforms.ToTensor(),
+    #移除了ToTensor()步骤
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 
-transform2pic = transforms.Compose([
+transform2pic_normalize = transforms.Compose([
     transforms.Resize((640, 1280)),
-    transforms.ToTensor(),
+    #移除了ToTensor()步骤
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 ##############################################################################################################################
 
-def loadModel(modelPath: str, classes: list):
+def loadModel(effNetVersion: str, modelPath: str, classes: list):
     # Load pre-trained EfficientNet model
-    model = models.efficientnet_b1(weights = None)
+    model: torchvision.models.EfficientNet = getattr(models, f"efficientnet_{effNetVersion}")(weights = None)
     model.classifier[1] = nn.Linear(
         in_features = model.classifier[1].in_features,
         out_features = len(classes)
@@ -73,10 +70,31 @@ def loadModel(modelPath: str, classes: list):
 
 
 def predict1_image_num(model: torchvision.models.EfficientNet, image_path = ...) -> int:
-    image = Image.open(image_path).convert('RGB')
-    image = transform2pic(image).unsqueeze(0).to(device)
+    # OpenCV读取为BGR格式
+    image = cv2.imread(image_path)
+    # 转换为RGB
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # 转换为tensor
+    image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+    image = transform_normalize(image).unsqueeze(0).to(device)
 
-    with torch.no_grad():
+    with torch.inference_mode():
+        outputs = model(image)
+        _, predicted = torch.max(outputs, 1)
+
+    return int(predicted.item()) #return class_names[predicted.item()]
+
+
+# [2024-11-28] 性能大概提高了4倍,500秒->135秒
+def predict1_image_num_tv_io(model: torchvision.models.EfficientNet, image_path) -> int:
+    # 直接读取为tensor，避免PIL转换步骤
+    image = torchvision.io.read_image(image_path).float() / 255.0  # 归一化到0-1
+    # Ensure the image tensor is on the same device as the model
+    image = image.to(device)  # Move image to the correct device
+    # Normalize and add batch dimension
+    image = transform_normalize(image).unsqueeze(0).to(device)
+
+    with torch.inference_mode():
         outputs = model(image)
         _, predicted = torch.max(outputs, 1)
 
@@ -84,10 +102,29 @@ def predict1_image_num(model: torchvision.models.EfficientNet, image_path = ...)
 
 
 def predict2_image_str(model: torchvision.models.EfficientNet, image_path = ...) -> str:
-    image = Image.open(image_path).convert('RGB')
-    image = transform2pic(image).unsqueeze(0).to(device)
+    # OpenCV读取为BGR格式
+    image = cv2.imread(image_path)
+    # 转换为RGB
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # 转换为tensor
+    image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+    image = transform2pic_normalize(image).unsqueeze(0).to(device)
 
-    with torch.no_grad():
+    with torch.inference_mode():
+        outputs = model(image)
+        _, predicted = torch.max(outputs, 1)
+
+    return class_names_2pic[predicted.item()]
+
+
+# [2024-11-28] 实验,使用torchvision.io读取
+def predict2_image_str_tv_io(model: torchvision.models.EfficientNet, image_path) -> str:
+    # 直接读取为tensor，避免PIL转换步骤
+    image = torchvision.io.read_image(image_path).float() / 255.0  # 归一化到0-1
+    # Normalize and add batch dimension
+    image = transform2pic_normalize(image).unsqueeze(0).to(device)
+
+    with torch.inference_mode():
         outputs = model(image)
         _, predicted = torch.max(outputs, 1)
 
@@ -128,7 +165,7 @@ def merge_and_predict_flicker(model2, file1, file2, outputFolder, mergeFolder, i
     merged_img = torch.cat([img1, img2], dim=2)
     # Save merged image
     torchvision.io.write_jpeg(merged_img, Path(mergeFolder).joinpath(f"{i:04d}_{i+1:04d}.jpg").as_posix(), quality=100)
-    return predict2_image_str(model2, Path(mergeFolder).joinpath(f"{i:04d}_{i+1:04d}.jpg").as_posix())
+    return predict2_image_str_tv_io(model2, Path(mergeFolder).joinpath(f"{i:04d}_{i+1:04d}.jpg").as_posix())
 
 
 predictResult = {}
@@ -141,6 +178,7 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
     b_found_err_before :bool = False
 
     if 'bChkGlich' in chkTypes:
+        # [2024-11-23] 由于model1添加了hua类型,所以需要调整（之前的类型5,half_quarter_black,现在改为hua）
         '''
         lst_tup_seq_glich = find_cons_seq(lst_all_type, target=5, min_length=1)
 
@@ -156,11 +194,9 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
             print(Fore.RED, 'in 5.hua IDX:', lst_output_glich, Fore.RESET)
             b_found_err_before = True
         '''
-        # [2024-11-23] 由于model1添加了hua类型,所以需要调整
-        # 之前的类型5,half_quarter_black,现在改为hua
         lst_output_glich = []
         for i, type in enumerate(lst_all_type):
-            if type == 5: 
+            if type == 5:
                 lst_output_glich.append(i)
         if len(lst_output_glich) > 0:
             print(Fore.RED, 'in 5.hua IDX:', lst_output_glich, Fore.RESET)
@@ -171,10 +207,25 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
             )
 
     if 'bChkFlick' in chkTypes:
+        '''
+        # [2024-11-29] 测试发现,类型0的图片,black_white_etc
+        lst_output_flick = []
+        for i, type in enumerate(lst_all_type):
+            if type == 0: 
+                lst_output_flick.append(i)
+        if len(lst_output_flick) > 0:
+            print(Fore.RED,' in 0.black_white_etc IDX:', lst_output_flick, Fore.RESET)
+            b_found_err_before = True
+            updateDict(
+                Dict1 = predictResult,
+                Dict2 = {'lst_output_glich': lst_output_flick}
+            )
+        '''
+
         # [2024-11-25] 测试发现,类型3的图片,desktop_black_half_etc
         lst_output_flick = []
         for i, type in enumerate(lst_all_type):
-            if type == 3: 
+            if type == 3:
                 lst_output_flick.append(i)
         if len(lst_output_flick) > 0:
             print(Fore.RED, 'in 3.desktop_black_half_etc IDX:', lst_output_flick, Fore.RESET)
@@ -271,7 +322,7 @@ def analyseFrames(model1, model2, chkTypes, outputFolder, mergeFolder):
             ) if lst_output_flick.__len__() > 0 else None
 
         # NOTE:有camOn但没有问题,所以要检测其他类型,因此,这里if判断要拿掉
-        # if len(lst_tup_seq_camOn) == 0 and len(lst_tup_seq_floatWin) == 0: 
+        # if len(lst_tup_seq_camOn) == 0 and len(lst_tup_seq_floatWin) == 0:
         print(Fore.RED + 'No camOn2/floatWin4 found,check 6.other type', Fore.RESET)
         # 没有找到camOn2/floatWin4,则需要考虑其他类型
         # 例如883_Screen_Recording_20240507_111135,(notebook)fixed:现在全是类型6
@@ -331,8 +382,10 @@ def predict(
     os.makedirs(mergeFolder, exist_ok = True)
 
     # Load models
-    model1 = loadModel(Path(modelDir).joinpath('effNet_b1_cls_flicker_best.pth'), class_names)
-    model2 = loadModel(Path(modelDir).joinpath('effNet_v2_b1_cls_flicker2pic_best.pth'), class_names_2pic)
+    model1 = loadModel('b3', Path(modelDir).joinpath('effNet_b3_cls_flicker_best.pth'), class_names)
+    #model1 = torch.jit.script(model1)
+    model2 = loadModel('b1', Path(modelDir).joinpath('effNet_v2_b1_cls_flicker2pic_best.pth'), class_names_2pic)
+    #model2 = torch.jit.script(model2)
 
     # Analyse frames
     analyseFrames(model1, model2, chkTypes, extractFolder, mergeFolder)
