@@ -1,17 +1,11 @@
 import threading
 from typing import Optional
 
-from .torchvision import *
+from .inference import *
+from .extract import *
 from .cv import *
 
 ##############################################################################################################################
-
-def getFiles(dir, extensions):
-    matchedFiles = []
-    for extension in extensions:
-        matchedFiles.extend(Path(dir).glob(f'*{extension}'))
-    return matchedFiles
-
 
 def updateDict(Dict1, Dict2):
     for key, value in Dict2.items():
