@@ -1,23 +1,30 @@
 # -*- coding: utf-8 -*-
 
-import os
 import sys
 import argparse
 import json
 import requests
 import requests_toolbelt
+import PyEasyUtils as EasyUtils
 from pathlib import Path
 from typing import Optional
 from PySide6.QtCore import Qt, QObject, Signal, Slot, QThread
 from PySide6.QtWidgets import *
-from QEasyWidgets import ComponentsSignals, Theme, EasyTheme, IconBase
-from QEasyWidgets import QFunctions as QFunc
+from QEasyWidgets import componentsSignals, Theme, currentTheme, IconBase
 
 from windows.windows import *
 from functions import *
-from config import currentDir, resourceDir
 
 ##############################################################################################################################
+
+# Check whether python file is compiled
+_, isFileCompiled = EasyUtils.getFileInfo()
+
+# Get current directory
+currentDir = EasyUtils.getBaseDir(__file__ if isFileCompiled == False else sys.executable)
+
+# Set directory to load static dependencies
+resourceDir = currentDir if EasyUtils.getBaseDir(searchMEIPASS = True) is None else EasyUtils.getBaseDir(searchMEIPASS = True)
 
 # 启动参数解析，启动环境，应用端口由命令行传入
 parser = argparse.ArgumentParser()
@@ -45,7 +52,7 @@ def Upload(
     filePaths: Union[list, str] = ...,
 ):
     URL = f"{protocol}://{ip}:{port}/upload"
-    fields = [("files", (Path(filePath).name, open(filePath, 'rb'), )) for filePath in QFunc.toIterable(filePaths)]
+    fields = [("files", (Path(filePath).name, open(filePath, 'rb'), )) for filePath in EasyUtils.toIterable(filePaths)]
     data = requests_toolbelt.MultipartEncoderMonitor(
         requests_toolbelt.MultipartEncoder(fields),
         lambda monitor: print(f"上传进度: {monitor.bytes_read/monitor.len*100:.2f}%")
@@ -269,24 +276,24 @@ class MainWindow(Window_MainWindow):
 
     def Main(self):
         # ParamsManager
-        configPath = QFunc.normPath(Path(configDir).joinpath('config.ini'))
+        configPath = EasyUtils.normPath(Path(configDir).joinpath('config.ini'))
         paramsManager = ParamsManager(configPath)
 
         # Theme toggler
-        ComponentsSignals.Signal_SetTheme.connect(
+        componentsSignals.setTheme.connect(
             lambda: self.ui.CheckBox_SwitchTheme.setChecked(
-                {Theme.Light: True, Theme.Dark: False}.get(EasyTheme.THEME)
+                {Theme.Light: True, Theme.Dark: False}.get(currentTheme())
             )
         )
         Function_ConfigureCheckBox(
             CheckBox = self.ui.CheckBox_SwitchTheme,
             CheckedEvents = [
                 lambda: paramsManager.config.editConfig('Settings', 'Theme', Theme.Light),
-                lambda: ComponentsSignals.Signal_SetTheme.emit(Theme.Light) if EasyTheme.THEME != Theme.Light else None
+                lambda: componentsSignals.setTheme.emit(Theme.Light) if currentTheme() != Theme.Light else None
             ],
             UncheckedEvents = [
                 lambda: paramsManager.config.editConfig('Settings', 'Theme', Theme.Dark),
-                lambda: ComponentsSignals.Signal_SetTheme.emit(Theme.Dark) if EasyTheme.THEME != Theme.Dark else None
+                lambda: componentsSignals.setTheme.emit(Theme.Dark) if currentTheme() != Theme.Dark else None
             ],
             TakeEffect = False
         )
@@ -311,7 +318,7 @@ class MainWindow(Window_MainWindow):
         self.ui.Button_Minimize_Window.setIcon(IconBase.Dash)
 
         # Logo
-        self.setWindowIcon(QIcon(QFunc.normPath(Path(currentDir).joinpath('assets/images/Logo.ico'))))
+        self.setWindowIcon(QIcon(EasyUtils.normPath(Path(currentDir).joinpath('assets/images/Logo.ico'))))
 
         self.setWindowTitle("Analyser")
 
@@ -324,7 +331,7 @@ class MainWindow(Window_MainWindow):
             widget = self.ui.LineEdit_pcSaveLoc,
             section = 'Input Params',
             option = 'OutputDir',
-            defaultValue = QFunc.normPath(Path(Path(currentDir).anchor).joinpath('vids'))
+            defaultValue = EasyUtils.normPath(Path(Path(currentDir).anchor).joinpath('vids'))
         )
 
         self.ui.Button_UploadFile.setText("上传视频文件")
@@ -335,7 +342,7 @@ class MainWindow(Window_MainWindow):
         #self.ui.Button_ViewOutput.clicked.connect(self.checkOutput)
 
         # Set theme
-        ComponentsSignals.Signal_SetTheme.emit(paramsManager.config.getValue('Settings', 'Theme', Theme.Auto))
+        componentsSignals.setTheme.emit(paramsManager.config.getValue('Settings', 'Theme', Theme.Auto))
 
         # Show window
         self.show()

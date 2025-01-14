@@ -1,5 +1,6 @@
 import os
 import re
+import PyEasyUtils as EasyUtils
 from pathlib import Path
 from PySide6.QtGui import *
 from PySide6.QtWidgets import *
@@ -39,16 +40,16 @@ def Function_ConfigureCheckBox(
         UncheckedEvents.append(lambda: CheckBox.setText(UncheckedText))
 
     CheckBox.toggled.connect(
-        lambda IsChecked: QFunc.runEvents(CheckedEvents if IsChecked else UncheckedEvents)
+        lambda IsChecked: EasyUtils.runEvents(CheckedEvents if IsChecked else UncheckedEvents)
     )
 
-    QFunc.runEvents(CheckedEvents) if TakeEffect and CheckBox.isChecked() else None
-    QFunc.runEvents(UncheckedEvents) if TakeEffect and not CheckBox.isChecked() else None
+    EasyUtils.runEvents(CheckedEvents) if TakeEffect and CheckBox.isChecked() else None
+    EasyUtils.runEvents(UncheckedEvents) if TakeEffect and not CheckBox.isChecked() else None
 
 
 def Function_SetWidgetValue(
     Widget: QWidget,
-    Config: QFunc.configManager,
+    Config: EasyUtils.configManager,
     Section: str = ...,
     Option: str = ...,
     Value = ...,
@@ -105,7 +106,7 @@ class ParamsManager:
         configPath: str,
     ):
         self.configPath = configPath
-        self.config = QFunc.configManager(configPath)
+        self.config = EasyUtils.configManager(configPath)
 
         self.RegistratedWidgets = {}
 
@@ -133,7 +134,7 @@ class ParamsManager:
     def ClearSettings(self):
         with open(self.configPath, 'w'):
             pass
-        self.config = QFunc.configManager(self.configPath)
+        self.config = EasyUtils.configManager(self.configPath)
 
     def ResetSettings(self):
         self.ClearSettings()
@@ -141,7 +142,7 @@ class ParamsManager:
             self.ResetParam(widget)
 
     def ImportSettings(self, readPath: str):
-        configParser = QFunc.configManager(readPath).parser()
+        configParser = EasyUtils.configManager(readPath).parser()
         with open(self.configPath, 'w', encoding = 'utf-8') as config:
             configParser.write(config)
         for widget, value in list(self.RegistratedWidgets.items()):

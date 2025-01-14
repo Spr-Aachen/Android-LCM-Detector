@@ -4,7 +4,7 @@ from PySide6.QtWidgets import *
 from QEasyWidgets.Windows import *
 
 from components.components import *
-from windows.ui.UI_Window import *
+from windows.ui.ui_window import *
 
 ##############################################################################################################################
 
