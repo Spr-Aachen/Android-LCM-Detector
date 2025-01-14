@@ -1,18 +1,34 @@
 import threading
 import os
 import gc
-import torch
 import cv2
 from ultralytics import YOLO
-from typing import List, Dict, Optional
-from concurrent.futures import ThreadPoolExecutor
-from colorama import Fore, Style
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Optional
+from colorama import Fore, Style
 from pathlib import Path
+from memory_profiler import profile
 
 from .utils import *
 
 ##############################################################################################################################
+
+def nobar_split_half_black(frame: numpy.ndarray, sample_sz = 1000) -> bool:
+    # 获取图像的高度和宽度
+    height, width = frame.shape[:2]
+    if height == 0 or width == 0:
+        return False
+    # 获取图像的一半宽度和高度
+    half_width = width // 2
+    half_height = height // 2
+    # 裁剪出图像的左半部分
+    L_half = frame[:, :half_width]
+    R_half = frame[:, half_width:]
+    U_half = frame[:half_height, :]
+    D_half = frame[half_height:, :]
+    return is_black_img(L_half, sample_sz) or is_black_img(R_half, sample_sz) or is_black_img(U_half, sample_sz) or is_black_img(D_half, sample_sz)
+
 
 predictResult = {}
 def analyseFrame(
@@ -22,7 +38,7 @@ def analyseFrame(
     model_clsBw: str,
     model_detect_splitScreen: str,
     chkTypes: list,
-    outputFolder, subdir,
+    outputFolder, subdirName,
 ):
     global predictResult
 
@@ -33,12 +49,12 @@ def analyseFrame(
         result_class = model_cls(frame, verbose=False)[0]
         # 如果检测到异常（花屏），保存图像
         if result_class.probs.top1 == 0:
-            file = save_image(timeStamp, frame, outputFolder, subdir)
+            file = saveImage(timeStamp, frame, outputFolder, subdirName)
             lst_outputH.append(file)
             print(Fore.RED, f"[花屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         updateDict(
-            Dict1 = predictResult,
-            Dict2 = {'lst_outputH': [timeStamp]} #Dict2 = {'lst_outputH': lst_outputH}
+            dict1 = predictResult,
+            dict2 = {'lst_outputH': [timeStamp]} #dict2 = {'lst_outputH': lst_outputH}
         )
 
     # 检查黑白屏
@@ -49,25 +65,25 @@ def analyseFrame(
         result_class = model_clsBw(frame, verbose=False)[0]
         # 如果检测到异常（黑白屏），保存图像
         if result_class.probs.top1 == 0:
-            file = save_image(timeStamp, frame, outputFolder, subdir)
+            file = saveImage(timeStamp, frame, outputFolder, subdirName)
             lst_outputB.append(file)
             print(Fore.RED, f"[黑白屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         elif result_class.probs.top1 == 2:
             # 由于特殊图像造成模型的判断问题,这里先用蒙特卡罗判断一下是否是白色
             isBlack = is_mostly_black(frame)
             if isBlack:
-                file = save_image(timeStamp, frame, outputFolder, subdir)
+                file = saveImage(timeStamp, frame, outputFolder, subdirName)
                 lst_outputB.append(file)
                 print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
             else:
-                file = save_image(timeStamp, frame, outputFolder, subdir)
+                file = saveImage(timeStamp, frame, outputFolder, subdirName)
                 lst_outputW.append(file)
                 print(Fore.RED, f"[白屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         else:
             pass
         updateDict(
-            Dict1 = predictResult,
-            Dict2 = {'lst_outputB': [timeStamp], 'lst_outputW': [timeStamp]} #Dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
+            dict1 = predictResult,
+            dict2 = {'lst_outputB': [timeStamp], 'lst_outputW': [timeStamp]} #dict2 = {'lst_outputB': lst_outputB, 'lst_outputW': lst_outputW}
         )
 
     # 分屏+检查黑白屏
@@ -95,7 +111,7 @@ def analyseFrame(
                         R_img = frame[0:height, int(x+w):width]
                         isBlack = is_mostly_black(L_img) | is_mostly_black(R_img)
                         if isBlack:
-                            file = save_image(timeStamp, frame, outputFolder, subdir)
+                            file = saveImage(timeStamp, frame, outputFolder, subdirName)
                             lst_outputSplitB.append(file)
                             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
                     else:
@@ -105,58 +121,39 @@ def analyseFrame(
                         downer_img = frame[int(y):height, 0:width]
                         isBlack = is_mostly_black(upper_img) | is_mostly_black(downer_img)
                         if isBlack:
-                            file = save_image(timeStamp, frame, outputFolder, subdir)
+                            file = saveImage(timeStamp, frame, outputFolder, subdirName)
                             lst_outputSplitB.append(file)
                             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         updateDict(
-            Dict1 = predictResult,
-            Dict2 = {'lst_outputSplitB': [timeStamp]} #Dict2 = {'lst_outputSplitB': lst_outputSplitB}
+            dict1 = predictResult,
+            dict2 = {'lst_outputSplitB': [timeStamp]} #dict2 = {'lst_outputSplitB': lst_outputSplitB}
         )
 
     # 无bar分屏+检查黑白屏
     lst_outputNobarSplitB:List[str] = []
     if 'bChkNobarSplit_then_BW' in chkTypes:
         if nobar_split_half_black(frame):
-            file = save_image(timeStamp, frame, outputFolder, subdir)
+            file = saveImage(timeStamp, frame, outputFolder, subdirName)
             lst_outputNobarSplitB.append(file)
             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         updateDict(
-            Dict1 = predictResult,
-            Dict2 = {'lst_outputNobarSplitB': [timeStamp]} #Dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
+            dict1 = predictResult,
+            dict2 = {'lst_outputNobarSplitB': [timeStamp]} #dict2 = {'lst_outputNobarSplitB': lst_outputNobarSplitB}
         )
 
     # 桌面来电底色
     lst_outputBlackback:List[str] = []
     if 'bChkBlackback' in chkTypes:
         if is_mostly_black(frame):
-            file = save_image(timeStamp, frame, outputFolder, subdir)
+            file = saveImage(timeStamp, frame, outputFolder, subdirName)
             lst_outputBlackback.append(file)
             print(Fore.RED, f"[黑屏] 时间戳: {timeStamp}", Style.RESET_ALL)
         updateDict(
-            Dict1 = predictResult,
-            Dict2 = {'lst_outputBlackback': [timeStamp]} #Dict2 = {'lst_outputBlackback': lst_outputBlackback}
+            dict1 = predictResult,
+            dict2 = {'lst_outputBlackback': [timeStamp]} #dict2 = {'lst_outputBlackback': lst_outputBlackback}
         )
 
 
-class YOLOManager:
-    """
-    Manage yolo model
-    """
-    def __init__(self, model_path, task):
-        self.model_path = model_path
-        self.task = task
-
-    def __enter__(self):
-        self.model = YOLO(self.model_path, task = self.task)
-        return self.model
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        del self.model
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        gc.collect()
-
-
-frameRate = 0
 def predict(
     mediaPath: str,
     chkTypes: list,
@@ -173,7 +170,7 @@ def predict(
         modelDir (str): 模型路径
         stopEvent (threading.Event): 结束信号
     """
-    global predictResult, frameRate
+    global predictResult
 
     predictResult.clear()
 
@@ -187,9 +184,9 @@ def predict(
     model_clsBw_path = Path(modelDir).joinpath('modelm-cls_screen_w_rec_basic.pt').as_posix()
     model_detect_splitScreen_path = Path(modelDir).joinpath("model_splitScreen.pt").as_posix()
     # Load the YOLO models
-    with YOLOManager(model_cls_path, 'classify') as model_cls, \
-         YOLOManager(model_clsBw_path, 'classify') as model_clsBw, \
-         YOLOManager(model_detect_splitScreen_path, 'classify') as model_detect_splitScreen:
+    with YOLO(model_cls_path, 'classify') as model_cls, \
+         YOLO(model_clsBw_path, 'classify') as model_clsBw, \
+         YOLO(model_detect_splitScreen_path, 'classify') as model_detect_splitScreen:
         # 启动图像处理线程池
         executor = ThreadPoolExecutor(max_workers = None)
         threads = []

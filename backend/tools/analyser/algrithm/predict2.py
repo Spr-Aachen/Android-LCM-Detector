@@ -1,8 +1,8 @@
 import threading
+import os
 import gc
+import random
 import torch
-import torch.nn as nn
-from torchvision import transforms, models
 import torchvision
 from ultralytics import YOLO
 from typing import List, Dict, Union, Optional
@@ -15,7 +15,8 @@ from .utils import *
 ##############################################################################################################################
 
 # Allow GPU acceleration if available
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+isCudaAvailable = torch.cuda.is_available()
+device = torch.device("cuda:0" if isCudaAvailable else "cpu")
 
 ##############################################################################################################################
 
@@ -33,77 +34,34 @@ class_names = [
     'wallpaper' #9
 ]
 
-
-# Class names mapping for 2pic model
-class_names_2pic = ['N', 'Y']
-
 ##############################################################################################################################
 
 # Define transformations - same as training
-transform_normalize = transforms.Compose([
-    transforms.Resize((640, 640)),
+transform_normalize = torchvision.transforms.Compose([
+    torchvision.transforms.Resize((640, 640)),
     #移除了ToTensor()步骤
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 
-transform_yolo = transforms.Compose([
-    transforms.Resize((640, 640)),
+transform_yolo = torchvision.transforms.Compose([
+    torchvision.transforms.Resize((640, 640)),
     #移除了ToTensor()步骤
-])
-
-
-transform2pic_normalize = transforms.Compose([
-    transforms.Resize((640, 1280)),
-    #移除了ToTensor()步骤
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 ##############################################################################################################################
 
-def loadModel(effNetVersion: str, modelPath: str, classes: list):
-    # Load pre-trained EfficientNet model
-    model: torchvision.models.EfficientNet = getattr(models, f"efficientnet_{effNetVersion}")(weights = None)
-    model.classifier[1] = nn.Linear(
-        in_features = model.classifier[1].in_features,
-        out_features = len(classes)
-    )
-    # Load trained weights
-    model.load_state_dict(torch.load(modelPath, weights_only = True))
-    # Move model to GPU if available
-    model.to(device)
-    # Set model to evaluation mode
-    model.eval()
-    return model
-
-
-# [2024-11-28] 性能大概提高了4倍,500秒->135秒
-def predict1_image_num_tv_io(model: torchvision.models.EfficientNet, imageTensor: torch.Tensor) -> int:
-    # 归一化到0-1
-    image = (imageTensor.float() / 255.0).clamp(0.0, 1.0)
-    # Ensure the image tensor is on the same device as the model
-    image = image.to(device)
-    # Add batch dimension
-    image = transform_normalize(image).unsqueeze(0).to(device)
-
-    with torch.inference_mode():
-        outputs = model(image)
-        _, predicted = torch.max(outputs, 1)
-
-    return int(predicted.item()) #return class_names[predicted.item()]
-
-
 # [2024-12-09] 使用yolo的detect模型, 得到floatWindow的坐标, 输入图片, 输出floatWindow的坐标
-def detect_floatWin(model: YOLO, picTensor: Optional[torch.Tensor] = None) -> Union[bool, None]:
-    if picTensor is None:
+def detect_floatWin(model: YOLO, pic: Optional[Union[torch.Tensor, str]] = None) -> Union[bool, None]:
+    if pic is None:
         return None
 
-    # 归一化到0-1
-    image = (picTensor.float() / 255.0).clamp(0.0, 1.0)
     # Ensure the image tensor is on the same device as the model
-    image = image.to(device)
-    # Add batch dimension
-    image = transform_yolo(image).unsqueeze(0)
+    picTensor = (torchvision.io.read_image(pic) if isinstance(pic, str) else pic).to(device)
+    # Transform the image tensor to the format expected by the model
+    image = transform_yolo(
+        (picTensor.float() / 255.0).clamp(0.0, 1.0) # Normalize to 0~1
+    ).unsqueeze(0)
 
     results = model(image, verbose = False, conf = 0.7)[0] #save=True,
     # print('results len=', len(results), type(results))
@@ -119,7 +77,7 @@ def detect_floatWin(model: YOLO, picTensor: Optional[torch.Tensor] = None) -> Un
     # x,y,w,h 判断是否黑白, 如果是则返回TRUE, 否则返回FALSE
     # Extract the float window region
     picTensor = picTensor.permute(1, 2, 0) # [C,H,W] -> [H,W,C]
-    img = picTensor.numpy().astype('uint8')
+    img = picTensor.cpu().numpy().astype('uint8')
     float_win = img[int(y-h/2):int(y+h/2), int(x-w/2):int(x+w/2)]
     #
     num_samples = 500 # Monte Carlo sampling - randomly sample points
@@ -154,340 +112,203 @@ def detect_floatWin(model: YOLO, picTensor: Optional[torch.Tensor] = None) -> Un
     else:
         return False
 
-
-# [2024-11-28] 实验,使用torchvision.io读取
-def predict2_image_str_tv_io(model: torchvision.models.EfficientNet, imageTensor: torch.Tensor) -> str:
-    # 归一化到0-1
-    image = (imageTensor.float() / 255.0).clamp(0.0, 1.0)
-    # Ensure the image tensor is on the same device as the model
-    image = image.to(device)
-    # Add batch dimension
-    image = transform2pic_normalize(image).unsqueeze(0).to(device)
-
-    with torch.inference_mode():
-        outputs = model(image)
-        _, predicted = torch.max(outputs, 1)
-
-    return class_names_2pic[predicted.item()]
-
 ##############################################################################################################################
 
-# [2024-11-18] 找到连续的序列
-def find_cons_seq(lst_type: list, target: int = 2, min_length: int = 3) -> list[tuple[int, int]]:
-    lst_all_range = []
-    i = 0
-    while i <= len(lst_type)-min_length:
-        if lst_type[i:i+min_length] == [target]*min_length:
-            # Found start of sequence, find end
-            start = i
-            while i < len(lst_type) and lst_type[i] == target:
-                i += 1
-            end = i - 1
-            lst_all_range.append((start, end))
-            # Look for next sequence starting after this one
-        else:
-            i += 1
-    return lst_all_range
-
-
-def merge_and_predict_flicker(model_classify2, file1, file2, outputFolder, mergeFolder, i)->str:
-    # Read the two images using torchvision
-    img1 = torchvision.io.read_image(Path(outputFolder).joinpath(file1).as_posix())
-    img2 = torchvision.io.read_image(Path(outputFolder).joinpath(file2).as_posix())
-
-    # Make sure both images have same height
-    if img1.shape[1] != img2.shape[1]:
-        # Resize to match height of first image
-        transform = torchvision.transforms.Resize((img1.shape[1], img2.shape[2]))
-        img2 = transform(img2)
-
-    # Concatenate images horizontally
-    merged_img = torch.cat([img1, img2], dim=2)
-    # Save merged image
-    torchvision.io.write_jpeg(merged_img, Path(mergeFolder).joinpath(f"{i:04d}_{i+1:04d}.jpg").as_posix(), quality=100)
-    return predict2_image_str_tv_io(model_classify2, Path(mergeFolder).joinpath(f"{i:04d}_{i+1:04d}.jpg").as_posix())
-
-
 predictResult = {}
-def analyseFrames(frameTensors: dict, model_classify, model_classify2, model_detectFloatWin, chkTypes):
+def analyseFrames(mediaPath, model_camCrop, model_classify, model_detectFloatWin, chkTypes, outputDir, extractType):
     global predictResult
 
-    lst_tensor = [pic for pic in frameTensors.values()]
-
-    # [2024-12-08] 这里比较郁闷,因为以前产生的目录不能用了,要补充timestamp信息
-    # 测试发现,类型0的图片,black_white_etc, 需要判断是否连续的type4.floatWin
-    # 因此,需要补充timestamp信息
-    lst_f_timestamp = [float(str_timestamp) for str_timestamp in frameTensors.keys()]
-
+    # Define frameAnalyser
+    timestamps = []
+    frames = []
     lst_all_type = []
     lst_flick_idxType: list[tuple[int, int]] = [] # 保存idx和type
-    for i, pic in enumerate(lst_tensor):
-        class_num_1 = predict1_image_num_tv_io(model_classify, pic)
-        lst_flick_idxType.append((i, class_num_1))
-        lst_all_type.append(class_num_1)
-    print(Fore.GREEN, f'lst_all_type: {lst_all_type}', Fore.RESET)
+    def analyse():
+        """
+        Analyse frames and save the results.
+        """
+        indexList = [indexType[0] for indexType in lst_flick_idxType]
 
-    b_found_err_before :bool = False
+        if 'bChkGlich' in chkTypes:
+            # [2024-11-23] 由于model1添加了hua类型,所以需要调整（之前的类型5,half_quarter_black,现在改为hua）
+            lst_output_glich = []
+            for i, type in enumerate(lst_all_type):
+                if type == 5:
+                    lst_output_glich.append(i)
+            if len(lst_output_glich) > 0:
+                print(Fore.RED, f'[model_classify] 5.{class_names[5]}: {lst_output_glich}', Fore.RESET)
+                for frameCount in lst_output_glich:
+                    index = indexList[frameCount]
+                    saveImage(timestamps[index], frames[index], outputDir, class_names[5])
+                updateDict(
+                    dict1 = predictResult,
+                    dict2 = {'lst_output_glich': lst_output_glich}
+                )
 
-    if 'bChkGlich' in chkTypes:
-        # [2024-11-23] 由于model1添加了hua类型,所以需要调整（之前的类型5,half_quarter_black,现在改为hua）
-        lst_output_glich = []
-        for i, type in enumerate(lst_all_type):
-            if type == 5:
-                lst_output_glich.append(i)
-        if len(lst_output_glich) > 0:
-            print(Fore.RED, f'[model_classify] 5.hua: {lst_output_glich}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_glich': lst_output_glich}
-            )
+        if 'bChkFlick' in chkTypes:
+            # [2024-12-09] 判断有无几个连续的type4.floatWindow,当有10+时,判断floatWindow是否是黑白
+            lst_output_flick_0 = []
+            lst_flick_idxType_floatWin = [x for x in lst_flick_idxType if x[1] == 4]
+            if len(lst_flick_idxType_floatWin) > 0:
+                # Find sequences of 10 or more consecutive indices
+                consecutive_sequences:list[list[tuple[int, int]]] = []
+                current_sequence:list[tuple[int, int]] = []
 
-    if 'bChkFlick' in chkTypes:
-        # [2024-12-09] 判断有无几个连续的type4.floatWindow,当有10+时,判断floatWindow是否是黑白
-        lst_output_flick_0 = []
-        lst_flick_idxType_floatWin = [x for x in lst_flick_idxType if x[1] == 4]
-        if len(lst_flick_idxType_floatWin) > 0:
-            # Find sequences of 10 or more consecutive indices
-            consecutive_sequences:list[list[tuple[int, int]]] = []
-            current_sequence:list[tuple[int, int]] = []
+                # Sort by index to ensure we process in order
+                sorted_floatwin = sorted(lst_flick_idxType_floatWin, key=lambda x: x[0])
 
-            # Sort by index to ensure we process in order
-            sorted_floatwin = sorted(lst_flick_idxType_floatWin, key=lambda x: x[0])
-
-            for i in range(len(sorted_floatwin)):
-                if not current_sequence:
-                    # Start new sequence
-                    current_sequence.append(sorted_floatwin[i])
-                else:
-                    # Check if current index is consecutive with last index in sequence
-                    if sorted_floatwin[i][0] == current_sequence[-1][0] + 1:
+                for i in range(len(sorted_floatwin)):
+                    if not current_sequence:
+                        # Start new sequence
                         current_sequence.append(sorted_floatwin[i])
                     else:
-                        # Sequence broken, check if length >= 10 before starting new
-                        if len(current_sequence) >= 10:
-                            consecutive_sequences.append(current_sequence)
-                        current_sequence = [sorted_floatwin[i]]
+                        # Check if current index is consecutive with last index in sequence
+                        if sorted_floatwin[i][0] == current_sequence[-1][0] + 1:
+                            current_sequence.append(sorted_floatwin[i])
+                        else:
+                            # Sequence broken, check if length >= 10 before starting new
+                            if len(current_sequence) >= 10:
+                                consecutive_sequences.append(current_sequence)
+                            current_sequence = [sorted_floatwin[i]]
 
-            # Check final sequence
-            if len(current_sequence) >= 10:
-                consecutive_sequences.append(current_sequence)
+                # Check final sequence
+                if len(current_sequence) >= 10:
+                    consecutive_sequences.append(current_sequence)
 
-            for seq in consecutive_sequences:
-                # step2, 使用yolo的detect模型, 得到floatWindow的坐标, 使用阈值判断, 判断floatWindow是否black_white_etc
-                for tup in seq:
-                    i = tup[0]
-                    is_black_white = detect_floatWin(model_detectFloatWin, lst_tensor[i])
-                    if is_black_white is not None:
-                        if is_black_white:
-                            lst_output_flick_0.append(i)
-        if len(lst_output_flick_0) > 0:
-            print(Fore.RED, f'[model_detectFloatWin] 0.Black&White: {lst_output_flick_0}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_0}
-            )
+                for seq in consecutive_sequences:
+                    # step2, 使用yolo的detect模型, 得到floatWindow的坐标, 使用阈值判断, 判断floatWindow是否black_white_etc
+                    for tup in seq:
+                        i = tup[0]
+                        is_black_white = detect_floatWin(model_detectFloatWin, frames[i])
+                        if is_black_white is not None:
+                            if is_black_white:
+                                lst_output_flick_0.append(i)
+            if len(lst_output_flick_0) > 0:
+                print(Fore.RED, f'[model_detectFloatWin] 0.{class_names[0]}: {lst_output_flick_0}', Fore.RESET)
+                for frameCount in lst_output_flick_0:
+                    index = indexList[frameCount]
+                    saveImage(timestamps[index], frames[index], outputDir, class_names[0])
+                updateDict(
+                    dict1 = predictResult,
+                    dict2 = {'lst_output_flick': lst_output_flick_0}
+                )
 
-        # [2024-12-08] 输出两段作为对比, 判断有无几个连续的type4.floatWin
-        # [2024-12-08] 遍历lst_all_type, 当遇到type=0时, 向前查看有多少个type=4, 向后查看还有少type=0
-        lst_output_flick_4 = []
-        lst_output_flick_0 = []
-        i = 0
-        while i < len(lst_all_type):
-            if lst_all_type[i] == 0:
-                # Found type 0, look backwards for type 4
-                count_type4_before = 0
-                j = i - 1
-                while j >= 0 and lst_all_type[j] == 4:
-                    count_type4_before += 1
-                    j -= 1
+            # [2024-12-08] 输出两段作为对比, 判断有无几个连续的type4.floatWin
+            # [2024-12-08] 遍历lst_all_type, 当遇到type=0时, 向前查看有多少个type=4, 向后查看还有少type=0
+            lst_output_flick_4 = []
+            lst_output_flick_0 = []
+            i = 0
+            while i < len(lst_all_type):
+                if lst_all_type[i] == 0:
+                    # Found type 0, look backwards for type 4
+                    count_type4_before = 0
+                    j = i - 1
+                    while j >= 0 and lst_all_type[j] == 4:
+                        count_type4_before += 1
+                        j -= 1
 
-                # Look forward for consecutive type 0
-                count_type0_after = 0
-                j = i + 1
-                while j < len(lst_all_type) and lst_all_type[j] == 0:
-                    count_type0_after += 1
-                    j += 1
+                    # Look forward for consecutive type 0
+                    count_type0_after = 0
+                    j = i + 1
+                    while j < len(lst_all_type) and lst_all_type[j] == 0:
+                        count_type0_after += 1
+                        j += 1
 
-                # 两种情况, 1.count_type4_before > 0, 2.count_type0_after == 0
-                if count_type4_before > 0:
-                    # 或者考虑if lst_f_timestamp[i-count_type4_before+1] - lst_f_timestamp[i] > 0.7:
-                    diff_tm = lst_f_timestamp[i]-lst_f_timestamp[i-count_type4_before]
-                    if diff_tm > 0.7:
-                        #print(Fore.RED, f"Type4 indices: {list(range(i-count_type4_before, i))}", Fore.RESET)
-                        lst_output_flick_4.append(i)
+                    # 两种情况, 1.count_type4_before > 0, 2.count_type0_after == 0
+                    if count_type4_before > 0:
+                        # 或者考虑if timestamps[i-count_type4_before+1] - timestamps[i] > 0.7:
+                        diff_tm = timestamps[i]-timestamps[i-count_type4_before]
+                        if diff_tm > 0.7:
+                            #print(Fore.RED, f"Type4 indices: {list(range(i-count_type4_before, i))}", Fore.RESET)
+                            lst_output_flick_4.append(i)
+                        else:
+                            print(Fore.GREEN, f"after{count_type0_after} type0 {count_type4_before} type4, diff_tm:{diff_tm}", Fore.RESET)
                     else:
-                        print(Fore.GREEN, f"after{count_type0_after} type0 {count_type4_before} type4, diff_tm:{diff_tm}", Fore.RESET)
+                        #print(Fore.RED, f"range {i},{j}: Found type0", Fore.RESET)
+                        lst_output_flick_0.extend([num for num in range(i, j)])
+
+                    # Skip past the consecutive type 0s we found
+                    i = i + count_type0_after + 1
                 else:
-                    #print(Fore.RED, f"range {i},{j}: Found type0", Fore.RESET)
-                    lst_output_flick_0.extend([num for num in range(i, j+1)])
+                    i += 1
+            if len(lst_output_flick_4) > 0:
+                print(Fore.RED, f'[model_classify] 4.{class_names[4]}: {lst_output_flick_4}', Fore.RESET)
+                for frameCount in lst_output_flick_4:
+                    index = indexList[frameCount]
+                    saveImage(timestamps[index], frames[index], outputDir, class_names[4])
+                updateDict(
+                    dict1 = predictResult,
+                    dict2 = {'lst_output_flick': lst_output_flick_4}
+                )
+            if len(lst_output_flick_0) > 0:
+                print(Fore.RED, f'[model_classify] 0.{class_names[0]}: {lst_output_flick_0}', Fore.RESET)
+                for frameCount in lst_output_flick_0:
+                    index = indexList[frameCount]
+                    saveImage(timestamps[index], frames[index], outputDir, class_names[0])
+                updateDict(
+                    dict1 = predictResult,
+                    dict2 = {'lst_output_flick': lst_output_flick_0}
+                )
 
-                # Skip past the consecutive type 0s we found
-                i = i + count_type0_after + 1
+            # [2024-11-25] 测试发现,类型3的图片,desktop_black_half_etc
+            lst_output_flick_3 = []
+            for i, type in enumerate(lst_all_type):
+                if type == 3:
+                    lst_output_flick_3.append(i)
+            if len(lst_output_flick_3) > 0:
+                print(Fore.RED, f'[model_classify] 3.{class_names[3]}: {lst_output_flick_3}', Fore.RESET)
+                for frameCount in lst_output_flick_3:
+                    index = indexList[frameCount]
+                    saveImage(timestamps[index], frames[index], outputDir)
+                updateDict(
+                    dict1 = predictResult,
+                    dict2 = {'lst_output_flick': lst_output_flick_3}
+                )
+
+    # Extract frames
+    idx = 0
+    for timestamp, frame in extractFrames(mediaPath, model_camCrop, extractType, outputDir):
+        class_num_1 = predict_image(model_classify, transform_normalize, frame, device)
+        lst_flick_idxType.append((idx, class_num_1))
+        lst_all_type.append(class_num_1)
+        if class_num_1 == 6: # 'other'
+            frame = None # Filter out specific frames
+        frames.append(frame)
+        timestamps.append(timestamp)
+        idx += 1
+        # Start analyse while memory is not enough
+        if psutil.virtual_memory().available < 3*(1024**3): # 3GB
+            analyse()
+            # Release memory
+            frameNumber = len(frames)
+            if frameNumber >= 10:
+                # Keep only the last 10 frames and relevant info
+                lst_flick_idxType = [flick_idxType for flick_idxType in lst_flick_idxType if flick_idxType[0] in range(frameNumber - 10, frameNumber)]
+                lst_all_type = [flick_idxType[1] for flick_idxType in lst_flick_idxType]
+                frames = frames[-10:]
+                timestamps = timestamps[-10:]
             else:
-                i += 1
-        if len(lst_output_flick_4) > 0:
-            print(Fore.RED, f'[model_classify] 4.floatWin: {lst_output_flick_4}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_4}
-            )
-        if len(lst_output_flick_0) > 0:
-            print(Fore.RED, f'[model_classify] 0.Black&White: {lst_output_flick_0}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_0}
-            )
-
-        # [2024-11-25] 测试发现,类型3的图片,desktop_black_half_etc
-        lst_output_flick_3 = []
-        for i, type in enumerate(lst_all_type):
-            if type == 3:
-                lst_output_flick_3.append(i)
-        if len(lst_output_flick_3) > 0:
-            print(Fore.RED, f'[model_classify] 3.desktop_black_half_etc: {lst_output_flick_3}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_3}
-            )
-
-        """
-        # 'camOn', #2
-        # Find sequences of consecutive 'camOn' frames
-        lst_tup_seq_camOn = find_cons_seq(lst_all_type, target=2, min_length=3)
-        #lst_tup_seq_camOn = find_cons_seq(lst_all_type, target=2, min_length=3)
-        lst_output_flick_4 = []
-        lst_tup_seq_floatWin = find_cons_seq(lst_all_type, target=4, min_length=3)
-
-        for i, (start, end) in enumerate(lst_tup_seq_floatWin):
-            # Count consecutive zeros after the sequence end
-            zeros_count = 0
-            curr_pos = end + 1
-
-            # Check if next 5 frames are all zeros
-            # TODO:或者也可能是1.camOffWhite
-            if curr_pos + 5 <= len(lst_all_type) and lst_all_type[curr_pos:curr_pos+5] == [0]*5:
-                zeros_count = 5
-                curr_pos += 5
-                skip = 5
-                print(Fore.RED + f"floatWin frame {start:04d} to {end:04d} Followed by {zeros_count} MORE cons zeros" + Fore.RESET)
-                b_found_err_before = True
-            else:
-                print(Fore.BLUE + f"floatWin frame {start:04d} to {end:04d} Not followed by 5 cons zeros" + Fore.RESET)
-                if len(lst_all_type) > end+4 and lst_all_type[end+4] == 0:
-                    skip = 4
-                elif len(lst_all_type) > end+3 and lst_all_type[end+3] == 0:
-                    skip = 3
-                elif len(lst_all_type) > end+2 and lst_all_type[end+2] == 0:
-                    skip = 2
-                elif len(lst_all_type) > end+1 and lst_all_type[end+1] == 0:
-                    skip = 1
-                else:
-                    skip = 0
-
-            # 对下一个range之间的其他类型,进行检测
-            if i+1 < len(lst_tup_seq_floatWin):
-                next_start, next_end = lst_tup_seq_floatWin[i+1]
-                #next_type = lst_all_type[next_end]
-                # 对下一个range之间的其他图像(是否要考虑类型问题),进行检测
-                for j in range(end+skip+1, next_start):
-                    file1 = f"{j:04d}.jpg"
-                    file2 = f"{j+1:04d}.jpg"
-                    flick_type = merge_and_predict_flicker(model_classify2, file1, file2, outputFolder, mergeFolder, j)
-                    if flick_type == 'Y':
-                        #print(Fore.RED, 'in 2 floatWin range:', f"{j:04d}_{j+1:04d}.jpg: {flick_type}", Fore.RESET)
-                        lst_output_flick_4.extend([j, j+1])
-        if len(lst_output_flick_4) > 0:
-            print(Fore.RED, f'[model_classify2] 4.floatWin: {lst_output_flick_4}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_4}
-            )
-
-        # 在floatWin的序列中,合并图片,并预测,主要是procVw中的窗口显示问题
-        lst_output_flick_4 = []
-        for start, end in lst_tup_seq_floatWin:
-            for i in range(start, end):
-                file1 = f"{i:04d}.jpg"
-                file2 = f"{i+1:04d}.jpg"
-                flick_type = merge_and_predict_flicker(model_classify2, file1, file2, outputFolder, mergeFolder, i)
-                if flick_type == 'Y':
-                    #print(Fore.RED, 'floatWin flicker:', f"{i:04d}_{i+1:04d}.jpg: {flick_type}", Fore.RESET)
-                    lst_output_flick_4.extend([i, i+1])
-        if len(lst_output_flick_4) > 0:
-            print(Fore.RED, f'[model_classify2] 4.floatWin: {lst_output_flick_4}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_4}
-            )
-
-        # 遍历每个序列camOn
-        lst_output_flick_2 = []
-        for start, end in lst_tup_seq_camOn:
-            for i in range(start, end):
-                file1 = f"{i:04d}.jpg"
-                file2 = f"{i+1:04d}.jpg"
-                flick_type = merge_and_predict_flicker(model_classify2, file1, file2, outputFolder, mergeFolder, i)
-                if flick_type == 'Y':
-                    #print(Fore.RED, f"{i:04d}_{i+1:04d}.jpg: {flick_type}", Fore.RESET)
-                    lst_output_flick_2.extend([i, i+1])
-        if len(lst_output_flick_2) > 0:
-            print(Fore.RED, f'[model_classify2] 2.camOn: {lst_output_flick_2}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_2}
-            )
-
-        # NOTE:有camOn但没有问题,所以要检测其他类型,因此,这里if判断要拿掉
-        # if len(lst_tup_seq_camOn) == 0 and len(lst_tup_seq_floatWin) == 0:
-        print(Fore.RED + 'No camOn2/floatWin4 found,check 6.other type', Fore.RESET)
-        # 没有找到camOn2/floatWin4,则需要考虑其他类型
-        # 例如883_Screen_Recording_20240507_111135,(notebook)fixed:现在全是类型6
-        # 这里有类型判断问题,需要考虑增加训练数据,other里面数据还是太少
-        # lst_all_type
-        # 假设这里对6进行全量检测
-        lst_output_flick_6 = []
-        if b_found_err_before == False:
-            lst_tup_seq_other = find_cons_seq(lst_all_type, target=6, min_length=3)
-            print(Fore.GREEN + f"6.other range count: {len(lst_tup_seq_other)}" + Fore.RESET)
-            for start, end in lst_tup_seq_other:
-                print(Fore.GREEN + f"6.other frames {start:04d} to {end:04d}" + Fore.RESET)
-                for i in range(start, end):
-                    file1 = f"{i:04d}.jpg"
-                    file2 = f"{i+1:04d}.jpg"
-                    flick_type = merge_and_predict_flicker(model_classify2, file1, file2, outputFolder, mergeFolder, i)
-                    if flick_type == 'Y':
-                        #print(Fore.RED, f"{i:04d}_{i+1:04d}.jpg: {flick_type}", Fore.RESET)
-                        lst_output_flick_6.extend([i, i+1])
-        if len(lst_output_flick_6) > 0:
-            print(Fore.RED, f'[model_classify2] 6.other: {lst_output_flick_6}', Fore.RESET)
-            b_found_err_before = True
-            updateDict(
-                Dict1 = predictResult,
-                Dict2 = {'lst_output_flick': lst_output_flick_6}
-            )
-        """
+                lst_flick_idxType.clear()
+                lst_all_type.clear()
+                frames.clear()
+                timestamps.clear()
+    # analyse
+    analyse()
 
 
-frameRate = 0
 @profile(stream = open('./%s_memoryProfiler.log' % Path(__file__).stem, mode = 'w+'), precision = 3)
 def predict(
     mediaPath: str,
     chkTypes: list,
     outputFolder: str,
     modelDir: str,
+    camCrop: bool = True,
+    extractType: ExtractType = ExtractType.TENSOR,
     stopEvent: Optional[threading.Event] = None
 ):
     """
     """
-    global predictResult, frameRate
+    global predictResult
 
     predictResult.clear()
 
@@ -495,22 +316,26 @@ def predict(
 
     # Set output dir
     outputDir = Path(outputFolder).joinpath(Path(mediaPath).stem)
-
-    # Extract frames
-    frameTensors, frameRate = extractFrames(mediaPath)
+    shutil.rmtree(outputDir, ignore_errors = True) if Path(outputDir).exists() else None
+    os.makedirs(outputDir, exist_ok = True)
 
     # Load models
-    model_classify = loadModel('b3', Path(modelDir).joinpath('effNet_b3_cls_flicker_best.pth'), class_names)
+    model_camCrop = YOLO(Path(modelDir).joinpath('model_camCrop.pt').as_posix()) if camCrop else None
+    model_classify = loadEffNetModel('b3', Path(modelDir).joinpath('effNet_b3_cls_flicker_best.pth'), class_names, device)
     #model_classify = torch.jit.script(model_classify)
-    model_classify2 = loadModel('b1', Path(modelDir).joinpath('effNet_v2_b1_cls_flicker2pic_best.pth'), class_names_2pic)
-    #model_classify2 = torch.jit.script(model_classify2)
     model_detectFloatWin = YOLO(Path(modelDir).joinpath('model_detect_float_window2_best.pt').as_posix(), task = 'detect')
 
     # Analyse frames
-    analyseFrames(frameTensors, model_classify, model_classify2, model_detectFloatWin, chkTypes)
+    analyseFrames(mediaPath, model_camCrop, model_classify, model_detectFloatWin, chkTypes, outputDir, extractType)
 
     # Release memory
-    del frameTensors
+    local_vars = list(locals().items())
+    for name, val in local_vars:
+        if isinstance(val, torch.Tensor):
+            #if val.is_cuda:
+                #val.cpu()
+            del val
+    torch.cuda.empty_cache() if isCudaAvailable else None
     gc.collect()
 
 ##############################################################################################################################

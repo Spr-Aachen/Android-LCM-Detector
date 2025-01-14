@@ -1,6 +1,8 @@
 import threading
 from typing import Optional
 
+from .algrithm import ExtractType
+
 ##############################################################################################################################
 
 class analyserVersion:
@@ -14,6 +16,8 @@ def mediaAnalyse(
     chkTypes: list,
     outputFolder: str,
     modelDir: str,
+    camCrop: bool = False,
+    extractType: ExtractType = ExtractType.TENSOR,
     stopEvent: Optional[threading.Event] = None,
     version: analyserVersion = analyserVersion.V2
 ):
@@ -24,8 +28,8 @@ def mediaAnalyse(
         chkTypes (list): 检测类型
         outputFolder (str): 结果输出路径
         modelDir (str): 模型路径
-        toOnnx (bool): 是否转换为onnx格式
-        stopEvent (threading.Event): 结束信号
+        camCrop (bool): 是否启用录像边缘裁剪
+        extractType (ExtractType): 视频帧提取方案
     """
     global result
 
@@ -36,8 +40,8 @@ def mediaAnalyse(
     if version == analyserVersion.V2:
         from .algrithm import predict2 as predict
 
-    predict.predict(mediaPath, chkTypes, outputFolder, modelDir, stopEvent)
+    predict.predict(mediaPath, chkTypes, outputFolder, modelDir, camCrop, extractType, stopEvent)
     result.update(predict.predictResult)
-    return result, predict.frameRate
+    return result
 
 ##############################################################################################################################

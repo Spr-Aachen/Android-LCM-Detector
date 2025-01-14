@@ -1,1 +1,1 @@
-from .analyse import analyserVersion, mediaAnalyse, result
+from .analyse import ExtractType, mediaAnalyse, result

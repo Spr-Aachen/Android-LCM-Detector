@@ -1,19 +1,20 @@
 import threading
 from typing import Optional
 
+from .load import *
+from .io import *
 from .inference import *
-from .extract import *
-from .cv import *
+from .calc import *
 
 ##############################################################################################################################
 
-def updateDict(Dict1, Dict2):
-    for key, value in Dict2.items():
-        if key in Dict1:
-            Dict1[key] += value
+def updateDict(dict1: dict, dict2: dict) -> dict:
+    for key, value in dict2.items():
+        if key in dict1:
+            dict1[key] += value
         else:
-            Dict1[key] = value
-    return Dict1
+            dict1[key] = value
+    return dict1
 
 
 def stopSignal(stopEvent: Optional[threading.Event] = None):
